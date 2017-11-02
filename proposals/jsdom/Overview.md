@@ -1,4 +1,4 @@
-# JS + DOM Bindings Proposal for WebAssembly
+# Host Bindings Proposal for WebAssembly
 
 ## Motivation
 
@@ -6,6 +6,7 @@ WebAssembly currently in practice relies on a substantial amount of support
 from JavaScript + Web APIs to be useful on the Web.
 Interoperability with JavaScript and Web APIs will help make WebAssembly
 in practice more "of the Web" while improving performance and ergonomics.
+Bindings for non-Web hosts embeddings are also relevant.
 
 ## Goals / Non-Goals
 
@@ -106,7 +107,7 @@ JS-to-Wasm), taken from:
 Type | Description | Arguments
 --- | --- | ---
 PASS_THRU | Leaves the argument in the current type.
-OBJECT_HANDLE | A provided ALLOC_SLOT function is called to reserve an i32 index in a table for the next argument. The argument is places in that slot, and the slot number is passed as an i32 in its place.  The index of the ALLOC_SLOT function is provided in this section. | object table index, index of ALLOC_SLOT function
+OBJECT_HANDLE | The incoming argument is placed in a slot selected by the NEXT_SLOT i32 global. This slot number is passed as an i32 in its place. The NEXT_SLOT i32 global is incremented. The index of the NEXT_SLOT global is provided in this section. | object table index, index of NEXT_SLOT i32 global
 U64_PAIR | Decode the next argument as a pair of u32s (low then high), treating the value as an i64. |
 UTF8_STRING | A provided ALLOC_MEM function is called to reserve linear memory for the string. String bytes are copied to the allocated memory and the address and size are passed as a pair of i32 arguments to the function in their place.  The index of the ALLOC_MEM function is provided in this section. | index of ALLOC_MEM function
 ARRAY_BUFFER | A provided ALLOC_MEM function is called to reserve linear memory for the array buffer view data. Buffer bytes are copied to the allocated memory and the address and size are passed as a pair of i32 arguments to the function in their place.  The index of the ALLOC_MEM function is provided in this section. | index of ALLOC_MEM function
@@ -119,7 +120,7 @@ A binding conversion for the return type (Wasm-to-JS), taken from:
 Type | Description | Arguments
 --- | --- | ---
 PASS_THRU | Leaves the return type in the current type. |
-OBJECT_HANDLE | Converts the return value from an i32 to object by getting the object out of a corresponding table slot (arg must be i32).  Includes the index of a FREE_SLOT function taking a single i32, to be called with the slot index, after the object there has been copied, but before return.  | object table index, index of FREE_SLOT function
+OBJECT_HANDLE | Converts the return value from an i32 to object by getting the object out of a corresponding table slot (arg must be i32). | object table index
 U32 | Treats the return value an u32 (must have i32 type). |
 U64_PAIR | Treat the return value (must be i64) as a u64 and return as a pair of u32 (low then high). |
 UTF8_STRING | The return value is interpreted as the i32 address in linear memory of a pair of i32s. The first is the address of a region to convert, the second its length. The byte region is converted to a string. A FREE_MEM function is invoked prior to return on the i32 address returned (to allow cleanup). | index of FREE_MEM function
@@ -138,6 +139,33 @@ Key points:
   * Remove this section from what is handed to WebAssembly.
   * Wrap imported / exported methods in functions which update tables based
     on what is passed in / out.
+
+## Allocation
+
+Exports have the property that they need to be able to allocate Table slots
+for incoming objects or linear memory for raw data.
+
+For raw data like UTF8_STRING, ARRAY_BUFFER, etc. the index of an ALLOC_MEM
+function for incoming, and FREE_MEM function for outgoing data is used to
+give the WebAssembly module the opportunity to manage the linear memory.
+
+For objects, we especially want a cheap calling convention. Rather than provide
+a single slot alloc/free, we provide a NEXT_SLOT global to hold the i32 index
+of a pre-reserved location for the next incoming object of a given type.
+A reservation function can then be called inside exports to commit the
+reservation and get the next one. Since the code for the common case might
+be small, this allows toolchain inlining of that path inside the WebAssembly
+module. NEXT_SLOT is incremented after use. This potentially allows multiple
+arguments of the same type to share a single slot and reservation function.
+However, that does require the allocator to provide a NEXT_SLOT with contiguous
+slots up to the maximum number of arguments of the same type in the program.
+
+For freeing slots, no explicit mechanism is provided. But the assumption is
+that global containing a pending free slot can be set prior to function return,
+which will get released on the next allocation.
+NOTE: This does have the side-effect of holding a reference to the last
+returned value of each type until the module is re-entered through a path
+that triggers the actual free.
 
 ## Toolchains
 
@@ -174,13 +202,13 @@ webgl_bindings.h
 ----------------
 
 typedef int32 WebGLRenderingContext
-   __attribute__(wasmjsdom("WebGLRenderingContext");
+   __attribute__(wasmjsdom("object_handle:WebGLRenderingContext");
 typedef int32 WebGLShader
-   __attribute__(wasmjsdom("WebGLShader")
+   __attribute__(wasmjsdom("object_handle:WebGLShader")
 const int WebGLRenderingContext_VERTEX_SHADER = 0x8B31;
 
-extern WebGLShader WebGLRenderingContext_createShader(
-   WebGLRenderingContext self, int32 type);
+extern void WebGLRenderingContext_createShader(
+   WebGLRenderingContext self, int32 type, WebGLShader result);
 extern void WebGLRenderingContext_shaderSource(
    WebGLRenderingContext self, WebGLShader shader,
    const char* str, int32 length);
@@ -193,11 +221,25 @@ extern void WebGLRenderingContext_compileShadershaderSource(
 The above bindings could be used to compile a shader:
 
 ```
-WebGLShader createVertexShader(WebGLRenderingContext gl, const char* code) {
-  WebGLShader shader = WebGLRenderingContext_createShader(
-      gl, WebGLRenderingContext_VERTEX_SHADER);
-  WebGLRenderingContext_shaderSource(gl, shader, code, strlen(code));
+typedef struct { char* str; int32 len; } DOMString
+   __attribute__(wasmjsdom("utf8_string:");
+
+WebGLShader _drop_slot_WebGLShader;
+WebGLShader _alloc_shader_slot() { // allocs and updates _drop_slot... }
+
+WebGLRenderingContext _next_slot_WebGLRenderingContext;
+void _reserve_slot_WebGLRenderingContext() { // update next slot... }
+
+EMSCRIPTEN_KEEPALIVE
+WebGLShader createVertexShader(WebGLRenderingContext gl, DOMString code) {
+  _reserve_slot_WebGLRenderingContext();
+  WebGLShader shader = _alloc_shader_slot();
+  WebGLRenderingContext_createShader(
+      gl, WebGLRenderingContext_VERTEX_SHADER, shader);
+  WebGLRenderingContext_shaderSource(gl, shader, code.str, code.len);
+  free(code.str);
   WebGLRenderingContext_compileShader(gl, shader);
+  _drop_slot_WebGLShader = shader;
   return shader;
 }
 ```
@@ -205,16 +247,26 @@ WebGLShader createVertexShader(WebGLRenderingContext gl, const char* code) {
 Internally this becomes:
 
 ```
-int32 createVertexShader(int32 gl, int32 code) {
-  int32 shader = WebGLRenderingContext_createShader(gl, 0x8B31);
-  WebGLRenderingContext_shaderSource(gl, shader, code, strlen(code));
-  WebGLRenderingContext_compileShadeR(gl, shader);
+int32 _drop_slot_WebGLShader;
+int32 _alloc_shader_slot() { ... }
+
+int32 createVertexShader(int32 gl, int32 code_str, int32 code_len) {
+  _reserve_slot_WebGLRenderingContext();
+  int32 shader = _alloc_shader_slot();
+  WebGLRenderingContext_createShader(gl, 0x8B31, shader);
+  WebGLRenderingContext_shaderSource(gl, shader, code_str, code_len);
+  free(code_str);
+  WebGLRenderingContext_compileShader(gl, shader);
+  _drop_slot_WebGLShader = shader;
   return shader;
 }
+
+int32 _alloc_mem(int32 size) { return malloc(size); }
 ```
 
 Bindings for each import / export will also be generated.
-For example `shaderSource` might be something like:
+
+The import binding for `shaderSource` might be something like:
 
 Field | Value | Arguments
 --- | --- | ---
@@ -223,4 +275,13 @@ Import Mode | CALL_THIS |
 Arg0 | OBJECT_HANDLE | Table(5):WebGLRenderContext
 Arg1 | OBJECT_HANDLE | Table(7):WebGLShader
 Arg2 | UTF8_STRING |
+Return | OBJECT_HANDLE | Table(7):WebGLShader
+
+The export binding for `createVertexShader` might be something like:
+
+Field | Value | Arguments
+--- | --- | ---
+Export Index | createVertexShader(456) |
+Arg0 | OBJECT_HANDLE | Table(5):WebGLRenderContext, _next_slot_WebGLRenderingContext
+Arg1 | UTF8_STRING | _alloc_mem(678)
 Return | OBJECT_HANDLE | Table(7):WebGLShader
