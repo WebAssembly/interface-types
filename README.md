@@ -1,16 +1,13 @@
 [![Build Status](https://travis-ci.org/WebAssembly/spec.svg?branch=master)](https://travis-ci.org/WebAssembly/spec)
 
-# JS+DOM Bindings Proposal for WebAssembly
+# Host Bindings Proposal for WebAssembly
 
 This repository is a clone of github.com/WebAssembly/spec/. It is meant for
 discussion, prototype specification and implementation of a proposal
-to add JS+DOM object bindings support to WebAssembly.
+to add host object bindings (including JS + DOM) support to WebAssembly.
 
-See the [overview](proposals/jsdom/Overview.md) for a summary of the
+See the [overview](proposals/host-bindings/Overview.md) for a summary of the
 proposal.
-
-A formatted version of the spec with proposed changes is available here:
-[webassembly.github.io/jsdom](https://webassembly.github.io/jsdom/).
 
 Original README from upstream repository follows...
 
