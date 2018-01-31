@@ -201,7 +201,7 @@ WebIDL to a attributes will be required.
 
 It might convert input like this:
 
-```
+```webidl
 webgl.idl
 ---------
 
@@ -217,14 +217,14 @@ interface WebGLRenderingContext {
 
 To something like this:
 
-```
+```c
 webgl_bindings.h
 ----------------
 
 typedef int32 WebGLRenderingContext
-   __attribute__(wasmjsdom("object_handle:WebGLRenderingContext");
+   __attribute__(wasmjsdom("object_handle:WebGLRenderingContext"));
 typedef int32 WebGLShader
-   __attribute__(wasmjsdom("object_handle:WebGLShader")
+   __attribute__(wasmjsdom("object_handle:WebGLShader"));
 const int WebGLRenderingContext_VERTEX_SHADER = 0x8B31;
 
 extern void WebGLRenderingContext_createShader(
@@ -240,9 +240,9 @@ extern void WebGLRenderingContext_compileShadershaderSource(
 
 The above bindings could be used to compile a shader:
 
-```
+```c
 typedef struct { char* str; int32 len; } DOMString
-   __attribute__(wasmjsdom("utf8_string:");
+   __attribute__(wasmjsdom("utf8_string:"));
 
 WebGLShader _drop_slot_WebGLShader;
 WebGLShader _alloc_shader_slot() { // allocs and updates _drop_slot... }
@@ -266,7 +266,7 @@ WebGLShader createVertexShader(WebGLRenderingContext gl, DOMString code) {
 
 Internally this becomes:
 
-```
+```c
 int32 _drop_slot_WebGLShader;
 int32 _alloc_shader_slot() { ... }
 
