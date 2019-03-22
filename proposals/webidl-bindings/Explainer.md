@@ -88,7 +88,7 @@ Symmetric to the core WebAssembly [Type Section], all compound Web IDL types are
 defined in a **Web IDL Type Subsection** that is stored inside of, and can be
 referenced throughout the rest of the new **Web IDL Bindings Section** being
 defined by this proposal. The section/subsection design of Web IDL Bindings
-would mirror that of the [Names Section] and allow for extension in the future.
+would mirror that of the [Name Section] and allow for extension in the future.
 
 A tentative list of Web IDL compound types includes:
 * Function: a signature including one of {static, method or constructor},
@@ -103,7 +103,7 @@ the only compound types with explicit operators (introduced below) for
 constructing and destructuring values.  New compound types can be added in the
 future in conjunction with new operators.  Until then, types not listed above
 can be passed using either the Web IDL [`any`] type, which implies a runtime type
-check, or, in the future, with a [Type Import] that is checked for
+check, or, in the future, with a [Type Import][Type Imports] that is checked for
 signature-compatibility at instantiation-time, eliminating any runtime checks.
 (It is an [open question](#open-questions) whether this proposal should depend
 on Type Imports and remove the implicit `any` downcast; the rest of the
@@ -337,29 +337,29 @@ that get invoked by client specs (e.g., the [JS Embedding]):
 * `BindExport(export-binding, wasm-funcref) : Callback`
 * `BindImport(import-binding, webidl-function) : funcaddr`
 
-
-`BindExport` creates a Web IDL [`Callback`] function value which can either be
-used at instantiation-time, to create `Callback` export values of the
-WebAssembly instance, or at runtime, via the `bind` binding operator described
-above.  In either case, the `Callback` value, when called, will use the
-`export-binding` to map Web IDL calls to WebAssembly calls of `wasm-funcref`.
+`BindExport` creates a Web IDL [Callback] value which can either be used at
+instantiation-time, to create the export values of the WebAssembly instance, or
+at runtime, via the `bind` binding operator described [above](#binding-operators-and-expressions).
+In either case, the `Callback` value, when called by the host, will use the
+given `export-binding` to map Web IDL calls to WebAssembly calls of the given
+`wasm-funcref`.
 
 `BindImport` creates a [`funcaddr`] value which can either be used at
 instantiation-time, to create an [`externval`] passed to [`instantiate_module`],
-or at runtime, via the `bind` binding operator described above, to create a
-first-class [`ref.host`] parameter or return value.  The bound `funcaddr` will be
-the address of a [`hostfunc`] which, when called, will use the `import-binding` to
-WebAssembly calls to Web IDL calls of `webidl-function`.
+or at runtime, via the `bind` binding operator described [above](#binding-operators-and-expressions),
+to create a first-class [`ref.host`] parameter or return value.  The bound
+`funcaddr` will be the address of a [`hostfunc`] which, when called, will use
+the given `import-binding` to map WebAssembly calls to Web IDL calls of the
+given `webidl-function`.
 
-For both `BindExport` and `BindImport`, there are runtime checks to ensure that
+Both `BindExport` and `BindImport` assume that the host has already ensured that
 the given function is compatible with the given binding.  As explained and shown
-in the examples above, this check is not a normal subtype check; in particular,
-`any` is allowed to be passed for a variety of Web IDL types that are able to be
-converted with a simple dynamically-checked downcast (essentially, everything
-but numeric and dictionary types). (If this case was removed by relying on Type
-Imports, then the check could be normal subtyping; this is an [open question](#open-questions).)
+in the examples above, "compatibility" doesn't mean classic subtyping; in
+particular, `any` is allowed to be passed for a variety of Web IDL types that
+are able to be converted with a dynamically-checked downcast. (If this case was
+removed by relying on Type Imports, then the check *could* be classic subtyping;
+this is an [open question](#open-questions).)
 
-TODO: explain that we assume the host has checked that the Web IDL signatures are "compatible"
 
 ## JS API Integration
 
@@ -424,8 +424,20 @@ JS API use cases:
 * consuming/producing strings (a DOMString *is* a JS string)
 * consuming/producing JSON(-esque) blobs (via Dictionary and Sequence)
 
-TODO: talk about incompatible Web IDL
-TODO: talk about how built-in functions work if they gain (incompatible) Web IDL
+This fallback-to-JS behavior for incompatible Web IDL signatures also avoids
+two practical compatibility hazards:
+* If a JavaScript Built-in function that today has no Web IDL signature is
+  imbued with a Web IDL signature by a future iteration of the spec, this new
+  Web IDL signature may be subtly incompatible with extant uses of the
+  Built-in; the fallback behavior ensures adding a Web IDL signature to a
+  Built-in is always backwards-compatible.
+* If two browsers have slightly Web IDL signatures (which can occur for
+  historical compatibility reasons); the fallback behavior helps avoid
+  unnecssary hard failures.
+
+(To help well-intentioned developers avoid unintended performance degredation,
+WebAssembly engines should emit warning diagnostics on Web IDL signature
+mismatch.)
 
 
 ## Example: TextEncoder.encodeInto
@@ -511,16 +523,16 @@ numeric conversion binding operators.
 
 For the case of pre-existing APIs (e.g., Java class libraries or C APIs or RPC
 IDLs), the APIs' interfaces will likely have very different idioms and types
-used in signatures, thereby requiring a binding section with a very different
+used in signatures, thereby requiring a binding section with very different
 types and binding operators from the ones presented above.  Attempting to force
 one IDL (with hard backwards-compatibility requirements) to satisfy all these
 disparate use cases would likely lead to a suboptimal outcome for all APIs.
 
 In contrast, having a separate binding section specification for each separate
-family of APIs would allow each to be ideally suited and even allow a single
-WebAssembly module, with a single WebAssembly function import to have multiple
-bindings, allowing it to run efficiently in multiple environments (due to the
-ignored-if-unknown default behavior of [custom sections][custom section]).
+idiomatic family of APIs would allow each to be ideally suited and even allow a
+single WebAssembly module, with a single WebAssembly function import to have
+multiple bindings, allowing it to run efficiently in multiple environments (due
+to the ignored-if-unknown default behavior of [custom sections][custom section]).
 
 For the case of new, designed-for-WebAssembly APIs, the API can use core
 WebAssembly value types, avoiding the need for bindings at all, or use Web IDL
@@ -532,7 +544,7 @@ constraints of Web APIs' backwards-compatibility.
 ## Open Questions
 
 * What goes into the "MVP" release of this proposal?
-* Should Web IDL Bindings block on [Type Import]  (factored out of the GC
+* Should Web IDL Bindings block on [Type Imports]  (factored out of the GC
   proposal) to remove the implicit `any`-to-Web IDL conversions mentioned
   above?
 
