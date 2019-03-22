@@ -8,12 +8,12 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    version="1.1"
-   viewBox="0 0 800 475"
+   viewBox="0 0 654 391"
    stroke-miterlimit="10"
    id="svg245"
    sodipodi:docname="example-encodeInto-binding.svg"
-   width="800"
-   height="475"
+   width="654"
+   height="391"
    style="fill:none;stroke:none;stroke-linecap:square;stroke-miterlimit:10"
    inkscape:version="0.92.4 (33fec40, 2019-01-16)">
   <metadata
@@ -39,15 +39,15 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="640"
-     inkscape:window-height="480"
+     inkscape:window-width="1119"
+     inkscape:window-height="836"
      id="namedview247"
      showgrid="false"
-     inkscape:zoom="0.39333333"
+     inkscape:zoom="1"
      inkscape:cx="400"
      inkscape:cy="300"
-     inkscape:window-x="2542"
-     inkscape:window-y="257"
+     inkscape:window-x="2397"
+     inkscape:window-y="198"
      inkscape:window-maximized="0"
      inkscape:current-layer="svg245" />
   <clipPath
@@ -61,7 +61,7 @@
   <g
      clip-path="url(#p.0)"
      id="g243"
-     transform="translate(2.5423729,-56.355932)">
+     transform="matrix(0.80833333,0,0,0.80833333,3.5423729,-41.355932)">
     <path
        d="M 0,0 H 800 V 600 H 0 Z"
        id="path5"
