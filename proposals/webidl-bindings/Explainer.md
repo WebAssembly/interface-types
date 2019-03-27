@@ -139,7 +139,7 @@ could be defined in a WebAssembly module with this (strawman text-format)
 statement:
 
 ```
-(webidl-type $Contact (dictionary (field "name" DOMString) (field "age" long)))
+(webidl-type $Contact (dict (field "name" DOMString) (field "age" long)))
 ```
 
 Following the general WebAssembly text format convention, `$Contact` may be
@@ -151,7 +151,7 @@ integer index of the type definition in the Web IDL Types Subsection when the
 ## Binding Operators and Expressions
 
 Web IDL values are manipulated via Web IDL **binding expressions** which, like
-core WebAssembly instructions, are defined as abstract syntax trees (ASTs) with
+core WebAssembly instructions, are defined in the form of [abstract syntax] with
 both text and binary formats that are composed of **binding operators** which
 can have immediate operands and child expressions.  Binding operators come in
 two flavors—**outgoing** and **incoming**—which correspond to the two
@@ -262,7 +262,8 @@ text-format) statement would define a Web IDL Function type compatible with
 `addContact`:
 
 ```
-(webidl-type $AddContactFuncWebIDL (func (method any) (param $Contact DOMString) (result bool)))
+(webidl-type $AddContactFuncWebIDL
+  (func (method any) (param (dict $Contact) DOMString) (result bool)))
 ```
 
 Here, the `method` field specifies that the function is a "[regular operation]"
@@ -460,8 +461,10 @@ The signature of `encodeInto` could be defined with these (strawman text-format)
 statements:
 
 ```
-(webidl-type $TEEIR (dictionary (field "read" unsigned long long) (field "written" unsigned long long)))
-(webidl-type $EncodeIntoFuncWebIDL (func (method any) (param USVString Uint8Array) (result $TEEIR)))
+(webidl-type $TEEIR
+   (dict (field "read" unsigned long long) (field "written" unsigned long long)))
+(webidl-type $EncodeIntoFuncWebIDL
+   (func (method any) (param USVString Uint8Array) (result (dict $TEEIR))))
 ```
 
 The WebAssembly signature and import which would be used to call `encodeInto`
@@ -469,7 +472,7 @@ would be:
 
 ```
 (type $EncodeIntoFuncWasm (param anyref anyref i32 i32) (result i64 i64))
-(func $encodeInto (import "TextEncoder" "encodeInto") (type $EncodeIntoFuncWasm)
+(func $encodeInto (import "TextEncoder" "encodeInto") (type $EncodeIntoFuncWasm))
 ```
 
 Finally, the binding is accomplished with these two (strawman text-format)
@@ -554,6 +557,7 @@ constraints of Web APIs' backwards-compatibility.
 [JS Embedding]: https://webassembly.github.io/spec/js-api/index.html
 
 [core spec]: https://webassembly.github.io/spec/core
+[abstract syntax]: https://webassembly.github.io/spec/core/syntax/conventions.html
 [Validation Conventions]: https://webassembly.github.io/spec/core/valid/conventions.html
 [Type Section]: https://webassembly.github.io/spec/core/binary/modules.html#binary-typesec
 [Custom Section]: https://webassembly.github.io/spec/core/binary/modules.html#custom-section
