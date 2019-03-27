@@ -497,7 +497,7 @@ import the `TextEncoder` constructor, with the strawman
 (webidl-type $CtorFuncWebIDL (func (constructor default-new-target) (result any)))
 
 (type $CtorFuncWasm (func (result anyref)))
-(func $TextEncoderCtor (import "TextEncoder" "constructor") (type $CtorFuncWasm))
+(func $TextEncoderCtor (import "TextEncoder" "ctor") (type $CtorFuncWasm))
 
 (webidl-func-binding $CtorBinding import $CtorFuncWasm $CtorFuncWebIDL
   (result (as type=anyref (get 0))))
@@ -517,7 +517,7 @@ in properties that match the import module/field names above.
 WebAssembly.instantiateStreaming(fetch('encodeInto-example.wasm'), {
   TextEncoder: {
     encodeInto: TextEncoder.prototype.encodeInto,
-    constructor: TextEncoder
+    ctor: TextEncoder
   }
 }).then(...);
 ```
