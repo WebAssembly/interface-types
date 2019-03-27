@@ -504,8 +504,23 @@ import the `TextEncoder` constructor, with the strawman
 (webidl-bind $TextEncoderCtor $CtorBinding)
 ```
 
-With these bindings, a WebAssembly module can call `$TextEncoderCtor`, store the result in an `anyref` global and then pass that global value as the first argument to all subsequent calls to `$encodeInto`.
+With these bindings, a WebAssembly module can call `$TextEncoderCtor`, store
+the result in an `anyref` global and then pass that global value as the first
+argument to all subsequent calls to `$encodeInto`.
 
+Lastly, to instantiate this module (without any of the additional ESM features
+that were discussed [above](#JS-API-integration)), the embedding JavaScript would
+populate the import object with functions plucked from the global object stored
+in properties that match the import module/field names above.
+
+```js
+WebAssembly.instantiateStreaming(fetch('encodeInto-example.wasm'), {
+  TextEncoder: {
+    encodeInto: TextEncoder.prototype.encodeInto,
+    constructor: TextEncoder
+  }
+}).then(...);
+```
 
 ## FAQ
 
