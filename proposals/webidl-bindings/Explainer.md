@@ -56,7 +56,9 @@ instance from a Web IDL function by specifying:
 * for the Web IDL return value, how to destructure it into one or more
   WebAssembly values and/or the contents of linear memory.
 
-listed above for imports, but "in reverse".
+Conversely, an export binding describes how to create a Web IDL [Callback] value
+from a WebAssembly function by specifying the same kinds of things as an import
+binding, but "in reverse".
 
 One important property of the proposal is that there can be many bindings for a
 given Web IDL signature.  This is important for several reasons:
