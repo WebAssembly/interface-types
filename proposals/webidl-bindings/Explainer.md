@@ -88,7 +88,7 @@ Given this overview, the proposal is now presented in a bottom-up fashion.
 
 Symmetric to the core WebAssembly [Type Section], all compound Web IDL types are
 defined in a **Web IDL Type Subsection** that is stored inside of, and can be
-referenced throughout the rest of the new **Web IDL Bindings Section** being
+referenced throughout the rest of, the new **Web IDL Bindings Section** being
 defined by this proposal. The section/subsection design of Web IDL Bindings
 would mirror that of the [Name Section] and allow for extension in the future.
 
