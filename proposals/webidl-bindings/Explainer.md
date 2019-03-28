@@ -527,13 +527,13 @@ WebAssembly.instantiateStreaming(fetch('encodeInto-example.wasm'), {
 
 ### Does this proposal add any new low-level capabilities, APIs or backdoors?
 
-No; it just optimizes calls to existing APIs that, in the case of the Web, are
-already exposed to JavaScript.
+No; it just optimizes calls to *existing* APIs that, in the case of the Web,
+are already exposed to JavaScript.
 
 ### Will Web IDL Binding Expressions grow to duplicate WebAssembly?
 
 No; the criteria for adding a [binding operator](#binding-operators-and-expressions)
-is that the operator must express something something that couldn't be expressed
+is that the operator must express something that couldn't be expressed
 (without significant overhead) in WebAssembly.  That's why, e.g., there are no
 numeric conversion binding operators.
 
