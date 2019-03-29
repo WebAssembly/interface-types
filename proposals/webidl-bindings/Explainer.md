@@ -177,7 +177,7 @@ produced). A sample list of outgoing binding operators:
 | **view** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a new `webidl-type`, which must be a [Typed Array View], making a *view* of the bytes. |
 | **buffer** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a new `webidl-type`, which must be a [`BufferSource`] or [`ByteString`], making a *copy* of the bytes. |
 | **dict** | webidl‑type | *out‑exprs* | Create a Web IDL `webidl-type` [Dictionary] value using `out-exprs` as the field values (which must line up with `webidl-type` exactly). |
-| **bind‑export** | webidl‑type<br>binding<br>func‑idx | | Takes the `func-idx`'th wasm value of the source tuple, which must be a typed function [`ref`], and applies `binding` to produce a [Callback] value. (See [`BindExport`](#runtime) below.) |
+| **bind‑export** | webidl‑type<br>binding<br>func‑idx | | Takes the `func-idx`'th wasm value of the source tuple, which must be a typed function [`ref`], and applies `binding` to produce a [Callback] value. (See [`BindExport`](#instantiation-and-runtime) below.) |
 
 An **incoming binding expression** is composed of **incoming binding
 operators** and maps from a source tuple of Web IDL values to a **destination
@@ -191,7 +191,7 @@ tuple** of WebAssembly values.  A sample list of incoming binding operators:
 | **alloc‑buffer** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be a [`BufferSource`] or [`ByteString`], call the `alloc-func-idx`'th function of the receiving instance, passing the length and using the resulting offset to store a copy of the bytes into linear memory, returning the offset and byte-length as two `i32`s (and trapping on OOM). |
 | **enum‑to‑i32** | webidl‑type | *in‑expr* | Take the result of `in-expr`, which must be an [Enumeration] value, and reverse-map this string to the `i32` index of the matching string in the `webidl-type`, which must also be an Enumeration. |
 | **field** | field‑idx | *in‑expr*	| Take the result of `in-expr`, which must be a [Dictionary] value, and return the Web IDL value of the `field-idx`'th field. |
-| **bind‑import** | wasm‑type<br>binding | *in‑expr* | Take the result of `in-expr`, which must be a [Callback] value, and apply `binding` to produce a [`funcref`]  (or, later, a typed function reference). (See [`BindImport`](#runtime) below.) |
+| **bind‑import** | wasm‑type<br>binding | *in‑expr* | Take the result of `in-expr`, which must be a [Callback] value, and apply `binding` to produce a [`funcref`]  (or, later, a typed function reference). (See [`BindImport`](#instantiation-and-runtime) below.) |
 
 For example, building on the previous section's example, a Web IDL value of the
 `$Contact` dictionary type could be produced from three WebAssembly `i32`s by
