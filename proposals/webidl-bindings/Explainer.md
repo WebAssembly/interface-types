@@ -171,11 +171,11 @@ produced). A sample list of outgoing binding operators:
 | Operator | Immediates | Children | Description |
 | :---     | :---       | :---     | :---        |
 | **as** | webidl‑type<br>idx | | Takes the `idx`'th wasm value of the source tuple and produces a Web IDL value of `webidl-type`, allowing only trivial conversions (like `i32` to [`long`] or `anyref` to [`any`]). |
-| **utf8‑str** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a UTF-8 string in linear memory and decodes a `webidl-type`, which must be one of [`DOMString`], [`ByteString`] or [`USVString`]. |
+| **utf8‑str** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a UTF-8 string in linear memory and decodes a `webidl-type`, which must be one of [`DOMString`] or [`USVString`]. |
 | **utf8‑cstr** | webidl‑type<br>off‑idx	| | Like `utf8-str`, but instead of length being explicitly supplied as a wasm value in the source tuple, the length is found by decoding up to the first null code point. |
 | **i32‑to‑enum** | webidl‑type<br>val‑idx	| | Takes the `val-idx`'th wasm value of the source tuple, which must be an `i32`, as an index into the list of strings specified by `webidl-type`, which must be an [Enumeration]. |
 | **view** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a new `webidl-type`, which must be a [Typed Array View], making a *view* of the bytes. |
-| **buffer** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a new `webidl-type`, which must be a [BufferSource], making a *copy* of the bytes. |
+| **buffer** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a new `webidl-type`, which must be a [BufferSource] or [ByteString], making a *copy* of the bytes. |
 | **dict** | webidl‑type | *out‑exprs* | Create a Web IDL `webidl-type` [Dictionary] value using `out-exprs` as the field values (which must line up with `webidl-type` exactly). |
 | **bind‑export** | webidl‑type<br>binding<br>func‑idx | | Takes the `func-idx`'th wasm value of the source tuple, which must be a typed function [`ref`], and applies `binding` to produce a [Callback] value. (See [`BindExport`](#runtime) below.) |
 
@@ -187,8 +187,8 @@ tuple** of WebAssembly values.  A sample list of incoming binding operators:
 | :---     | :---       | :---     | :---        |
 | **get** | idx	| |	Return the `idx`th Web IDL value of the source tuple. |
 | **as** | wasm‑type | *in‑expr* | Take the result of `in-expr`, which can be any Web IDL value, and produces a wasm value of `wasm-type`, allowing only trivial conversions (like [`long`] to `i32` or [`any`] to `anyref`). |
-| **alloc‑utf8‑str** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be one of [`DOMString`], [`ByteString`] or [`USVString`], compute the number of bytes necessary to store a UTF-8 encoding of this string, call the `alloc-func-idx`'th function of the receiving instance, passing the number of bytes and using the resulting offset to store the UTF-8 encoding, finally returning the offset and byte-length as two `i32`s (and trapping on OOM). |
-| **alloc‑buffer** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be a [BufferSource], call the `alloc-func-idx`'th function of the receiving instance, passing the BufferSource's length and using the resulting offset to store a copy of the BufferSource in linear memory, returning the offset and byte-length as two `i32`s (and trapping on OOM). |
+| **alloc‑utf8‑str** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be either [`DOMString`] or [`USVString`], compute the number of bytes necessary to store a UTF-8 encoding of this string, call the `alloc-func-idx`'th function of the receiving instance, passing the number of bytes and using the resulting offset to store the UTF-8 encoding, finally returning the offset and byte-length as two `i32`s (and trapping on OOM or a lone surrogate which is allowed by `DOMString`). |
+| **alloc‑buffer** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be a [BufferSource] or [ByteString], call the `alloc-func-idx`'th function of the receiving instance, passing the length and using the resulting offset to store a copy of the bytes into linear memory, returning the offset and byte-length as two `i32`s (and trapping on OOM). |
 | **enum‑to‑i32** | webidl‑type | *in‑expr* | Take the result of `in-expr`, which must be an [Enumeration] value, and reverse-map this string to the `i32` index of the matching string in the `webidl-type`, which must also be an Enumeration. |
 | **field** | field‑idx | *in‑expr*	| Take the result of `in-expr`, which must be a [Dictionary] value, and return the Web IDL value of the `field-idx`th field. |
 | **bind‑import** | wasm‑type<br>binding | *in‑expr* | Take the result of `in-expr`, which must be a [Callback] value, and apply `binding` to produce a [`funcref`]  (or, later, a typed function reference). (See [`BindImport`](#runtime) below.) |
@@ -426,7 +426,7 @@ JS API use cases:
 * consuming/producing JSON(-esque) blobs (via Dictionary and Sequence)
 
 This fallback-to-JS behavior for incompatible Web IDL signatures also avoids
-two practical compatibility hazards:
+three practical compatibility hazards:
 * If a JavaScript Built-in function that today has no Web IDL signature is
   imbued with a Web IDL signature by a future iteration of the spec, this new
   Web IDL signature may be subtly incompatible with extant uses of the
@@ -435,6 +435,9 @@ two practical compatibility hazards:
 * If two browsers have slightly Web IDL signatures (which can occur for
   historical compatibility reasons); the fallback behavior helps avoid
   unnecssary hard failures.
+* Sometimes Web IDL specifications are refactored over time (e.g., changing a
+  `long` to a `double`), assuming the coercive semantics of JavaScript;
+  the fallback behavior similarly avoids hard failures.
 
 (To help well-intentioned developers avoid unintended performance degredation,
 WebAssembly engines should emit warning diagnostics on Web IDL signature
