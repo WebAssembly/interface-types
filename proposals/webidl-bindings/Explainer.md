@@ -171,7 +171,7 @@ produced). A sample list of outgoing binding operators:
 | Operator | Immediates | Children | Description |
 | :---     | :---       | :---     | :---        |
 | **as** | webidl‑type<br>idx | | Takes the `idx`'th wasm value of the source tuple and produces a Web IDL value of `webidl-type`, allowing only trivial conversions (like `i32` to [`long`] or `anyref` to [`any`]). |
-| **utf8‑str** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a UTF-8 string in linear memory and decodes a `webidl-type`, which must be one of [`DOMString`] or [`USVString`]. |
+| **utf8‑str** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a UTF-8 string in linear memory and decodes a `webidl-type`, which must be one of [`DOMString`] or [`USVString`], as specified by [`TextDecoder`]. |
 | **utf8‑cstr** | webidl‑type<br>off‑idx	| | Like `utf8-str`, but instead of length being explicitly supplied as a wasm value in the source tuple, the length is found by decoding up to the first null code point. |
 | **i32‑to‑enum** | webidl‑type<br>val‑idx	| | Takes the `val-idx`'th wasm value of the source tuple, which must be an `i32`, as an index into the list of strings specified by `webidl-type`, which must be an [Enumeration]. |
 | **view** | webidl‑type<br>off‑idx<br>len‑idx | | Takes the `off-idx`'th and `len-idx`'th wasm values of the source tuple, which must both be `i32`s, as the offset and length, resp., of a new `webidl-type`, which must be a [Typed Array View], making a *view* of the bytes. |
@@ -187,7 +187,7 @@ tuple** of WebAssembly values.  A sample list of incoming binding operators:
 | :---     | :---       | :---     | :---        |
 | **get** | idx	| |	Return the `idx`th Web IDL value of the source tuple. |
 | **as** | wasm‑type | *in‑expr* | Take the result of `in-expr`, which can be any Web IDL value, and produces a wasm value of `wasm-type`, allowing only trivial conversions (like [`long`] to `i32` or [`any`] to `anyref`). |
-| **alloc‑utf8‑str** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be either [`DOMString`] or [`USVString`], compute the number of bytes necessary to store a UTF-8 encoding of this string, call the `alloc-func-idx`'th function of the receiving instance, passing the number of bytes and using the resulting offset to store the UTF-8 encoding, finally returning the offset and byte-length as two `i32`s (and trapping on OOM or a lone surrogate which is allowed by `DOMString`). |
+| **alloc‑utf8‑str** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be either [`DOMString`] or [`USVString`], compute the number of bytes necessary to store a UTF-8 encoding of this string, call the `alloc-func-idx`'th function of the receiving instance, passing the number of bytes and using the resulting offset to store the UTF-8 encoding, as specified by [`TextEncoder`], finally returning the offset and byte-length as two `i32`s (and trapping on OOM). |
 | **alloc‑buffer** | alloc‑func‑idx | *in‑expr* | Take the result of `in-expr`, which must be a [`BufferSource`] or [`ByteString`], call the `alloc-func-idx`'th function of the receiving instance, passing the length and using the resulting offset to store a copy of the bytes into linear memory, returning the offset and byte-length as two `i32`s (and trapping on OOM). |
 | **enum‑to‑i32** | webidl‑type | *in‑expr* | Take the result of `in-expr`, which must be an [Enumeration] value, and reverse-map this string to the `i32` index of the matching string in the `webidl-type`, which must also be an Enumeration. |
 | **field** | field‑idx | *in‑expr*	| Take the result of `in-expr`, which must be a [Dictionary] value, and return the Web IDL value of the `field-idx`'th field. |
@@ -629,7 +629,9 @@ constraints of Web APIs' backwards-compatibility.
 [ESM-integration]: https://github.com/WebAssembly/esm-integration
 
 [HTML module loader]: https://html.spec.whatwg.org/multipage/webappapis.html#integration-with-the-javascript-module-system
-[`encodeInto`]: https://encoding.spec.whatwg.org/#interface-textencoder
+[`TextEncoder`]: https://encoding.spec.whatwg.org/#interface-textencoder
+[`TextDecoder`]: https://encoding.spec.whatwg.org/#interface-textdecoder
+[`encodeInto`]: https://encoding.spec.whatwg.org/#ref-for-dom-textencoder-encodeinto
 
 [JS Standard Library]: https://github.com/tc39/proposal-javascript-standard-library
 [import-maps]: https://github.com/WICG/import-maps
