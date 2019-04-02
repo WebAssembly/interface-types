@@ -390,14 +390,15 @@ import a Web IDL function, JavaScript glue code would need to grab the
 [Web IDL-created function objects][Create Operation Function] off the prototypes
 of the constructors stored on the JavaScript global object.  Additionally,
 getter and setter functions would need to be extracted via
-[`Object.getOwnPropertyDescriptor`].  It's important to note that, while it is a
-JavaScript function being passed into the JS API, this function would be
-semantically "unwrapped" by the JS API to get the underlying Web IDL function
-which is actually imported and called.
+[`Object.getOwnPropertyDescriptor`]. While it is a JavaScript function being
+passed into the JS API, the JS Embedding would semantically "unwrap" the JavScript
+function to get the backing Web IDL Function. This is symmetric to how the JS
+Embedding's current [read the imports] spec unwraps WebAssembly Exported
+Functions.
 
 In the future, though, a combination of additional features could allow a
 WebAssembly module to import Web APIs more directly:
-* [ESM-integration], allowing WebAssembly instantiated by the
+* [ESM-integration], allowing WebAssembly to be instantiated by the
   [HTML module loader].
 * [Built-in modules][JS Standard Library], allowing all ESMs (JS and
   WebAssembly) to import modules provided by the host (with polyfilling and
@@ -573,6 +574,7 @@ constraints of Web APIs' backwards-compatibility.
 
 [Embedder Specification]: https://webassembly.github.io/spec
 [JS Embedding]: https://webassembly.github.io/spec/js-api/index.html
+[read the imports]: https://webassembly.github.io/spec/js-api/index.html#read-the-imports
 
 [core spec]: https://webassembly.github.io/spec/core
 [abstract syntax]: https://webassembly.github.io/spec/core/syntax/conventions.html
