@@ -130,7 +130,7 @@ used as Web IDL Types.
 
 As an example, the Web IDL Dictionary:
 
-```
+```WebIDL
 dictionary Contact {
   DOMString name;
   long age;
@@ -140,7 +140,7 @@ dictionary Contact {
 could be defined in a WebAssembly module with this (strawman text-format)
 statement:
 
-```
+```wasm
 (webidl-type $Contact (dict (field "name" DOMString) (field "age" long)))
 ```
 
@@ -197,7 +197,7 @@ For example, building on the previous section's example, a Web IDL value of the
 `$Contact` dictionary type could be produced from three WebAssembly `i32`s by
 the following (strawman text-format) binding expression:
 
-```
+```wasm
 (dict $Contact (utf8-str DOMString off-idx=0 len-idx=1) (as type=long idx=2))
 ```
 
@@ -222,7 +222,7 @@ exported functions or the parameters of imported functions.
 
 For example, building on the previous example, to create the *parameter* tuple to pass to this Web IDL method:
 
-```
+```WebIDL
 interface ContactDB {
   bool addContact(Contact contact, DOMString contactBook);
 };
@@ -231,7 +231,7 @@ interface ContactDB {
 the following (strawman text-format, which is just a sequence of binding
 expressions) binding map could be used:
 
-```
+```wasm
 (dict $Contact (utf8-str DOMString off-idx=0 len-idx=1) (as type=long idx=2))
 (utf8-str DOMString off-idx=3 len-idx=4)
 ```
@@ -261,7 +261,7 @@ For example, building on the previous example, the following (strawman
 text-format) statement would define a Web IDL Function type compatible with
 `addContact`:
 
-```
+```wasm
 (webidl-type $AddContactFuncWebIDL
   (func (method any) (param (dict $Contact) DOMString) (result bool)))
 ```
@@ -273,13 +273,13 @@ type.
 The following (official text format) statement defines the WebAssembly function
 type which the WebAssembly module would use to call `addContact`:
 
-```
+```wasm
 (type $AddContactFuncWasm (func (param anyref i32 i32 i32 i32 i32) (result i32)))
 ```
 
 With all these, a Web IDL function binding named `$addContactBinding` can be defined:
 
-```
+```wasm
 (webidl-func-binding $addContactBinding import $AddContactFuncWasm $AddContactFuncWebIDL
   (param
     (as type=any idx=0)
@@ -295,7 +295,7 @@ element of the parameter binding map's destination tuple will be used as the
 
 Lastly, we need the WebAssembly function import statement (that is called by the rest of the WebAssembly module) and a Web IDL statement to link the import to the binding:
 
-```
+```wasm
 (func $addContact (import "ContactDB" "addContact") (type $AddContactFuncWasm))
 (webidl-bind $addContact $addContactBinding)
 ```
@@ -448,7 +448,7 @@ mismatch.)
 
 An abridged Web IDL signature for [`encodeInto`] is:
 
-```
+```WebIDL
 dictionary TextEncoderEncodeIntoResult {
   unsigned long long read;
   unsigned long long written;
@@ -463,7 +463,7 @@ interface TextEncoder {
 The signature of `encodeInto` could be defined with these (strawman text-format)
 statements:
 
-```
+```wasm
 (webidl-type $TEEIR
    (dict (field "read" unsigned long long) (field "written" unsigned long long)))
 (webidl-type $EncodeIntoFuncWebIDL
@@ -473,7 +473,7 @@ statements:
 The WebAssembly signature and import which would be used to call `encodeInto`
 would be:
 
-```
+```wasm
 (type $EncodeIntoFuncWasm (param anyref anyref i32 i32) (result i64 i64))
 (func $encodeInto (import "TextEncoder" "encodeInto") (type $EncodeIntoFuncWasm))
 ```
@@ -481,7 +481,7 @@ would be:
 Finally, the binding is accomplished with these two (strawman text-format)
 statements:
 
-```
+```wasm
 (webidl-func-binding $encodeIntoBinding import $EncodeIntoFuncWasm $EncodeIntoFuncWebIDL
     (param (as type=any idx=0) (as type=any idx=1) (view type=uint8 off-idx=2 len-idx=3))
     (result (as type=i64 (field "read" (get 0))) (as type=i64 (field "written" (get 0)))))
@@ -497,7 +497,7 @@ import the `TextEncoder` constructor, with the strawman
 `(constructor default-new-target)` syntax indicating the default `newTarget`
 (the callee constructor).
 
-```
+```wasm
 (webidl-type $CtorFuncWebIDL (func (constructor default-new-target) (result any)))
 
 (type $CtorFuncWasm (func (result anyref)))
