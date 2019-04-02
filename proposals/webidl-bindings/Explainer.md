@@ -433,8 +433,8 @@ three practical compatibility hazards:
   Web IDL signature may be subtly incompatible with extant uses of the
   Built-in; the fallback behavior ensures adding a Web IDL signature to a
   Built-in is always backwards-compatible.
-* If two browsers have slightly Web IDL signatures (which can occur for
-  historical compatibility reasons); the fallback behavior helps avoid
+* If two browsers have slightly incompatible Web IDL signatures (which can
+  occur for historical compatibility reasons); the fallback behavior helps avoid
   unnecssary hard failures.
 * Sometimes Web IDL specifications are refactored over time (e.g., changing a
   `long` to a `double`), assuming the coercive semantics of JavaScript;
