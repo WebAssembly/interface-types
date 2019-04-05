@@ -400,10 +400,10 @@ In the future, though, a combination of additional features could allow a
 WebAssembly module to import Web APIs more directly:
 * [ESM-integration], allowing WebAssembly to be instantiated by the
   [HTML module loader].
-* [Built-in modules][Originals Proposal], allowing all ESMs (JS and
+* [Built-in modules][JS Standard Library], allowing all ESMs (JS and
   WebAssembly) to import modules provided by the host (with polyfilling and
   censoring provided by [import-maps]).
-* [Automatic reflection of *all* Web APIs as built-in modules][Everything Is A Module],
+* [Automatic reflection of *all* Web APIs as built-in modules][Originals Proposal],
   with the import module/field names derived from the API's Web IDL signature.
 
 **Question #2**: What happens when there is a Web IDL import binding but the
@@ -635,9 +635,9 @@ constraints of Web APIs' backwards-compatibility.
 [`TextDecoder`]: https://encoding.spec.whatwg.org/#interface-textdecoder
 [`encodeInto`]: https://encoding.spec.whatwg.org/#ref-for-dom-textencoder-encodeinto
 
-[Originals Proposal]: https://github.com/domenic/get-originals/blob/master/README.md
+[JS Standard Library]: https://github.com/tc39/proposal-javascript-standard-library
 [import-maps]: https://github.com/WICG/import-maps
-[Everything Is A Module]: https://github.com/heycam/webidl/issues/676
+[Originals Proposal]: https://github.com/domenic/get-originals/blob/master/README.md
 
 [ES Classes]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes
 [`Object.getOwnPropertyDescriptor`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertyDescriptor
