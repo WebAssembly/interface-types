@@ -635,7 +635,7 @@ constraints of Web APIs' backwards-compatibility.
 [`TextDecoder`]: https://encoding.spec.whatwg.org/#interface-textdecoder
 [`encodeInto`]: https://encoding.spec.whatwg.org/#ref-for-dom-textencoder-encodeinto
 
-[Originals Proposal]: https://github.com/tc39/proposal-javascript-standard-library
+[Originals Proposal]: https://github.com/domenic/get-originals/blob/master/README.md
 [import-maps]: https://github.com/WICG/import-maps
 [Everything Is A Module]: https://github.com/heycam/webidl/issues/676
 
