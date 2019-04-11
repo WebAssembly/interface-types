@@ -137,16 +137,20 @@ dictionary Contact {
 };
 ```
 
-could be defined in a WebAssembly module with this (strawman text-format)
-statement:
+could be defined in a WebAssembly module with this statement defined in a
+strawman text format syntax that is built on throughout this explainer:
 
 ```wasm
-(webidl-type $Contact (dict (field "name" DOMString) (field "age" long)))
+(@webidl type $Contact (dict (field "name" DOMString) (field "age" long)))
 ```
 
-Following the general WebAssembly text format convention, `$Contact` may be
-used throughout the Web IDL Bindings Section, with uses converted to the
-integer index of the type definition in the Web IDL Types Subsection when the
+(The `@webidl` token indicates that the expression is a [Custom Annotation]
+and can be skipped by a text-format parser that doesn't support Web IDL
+Bindings (by jumping to the closing paren).)
+
+Following the general WebAssembly text format convention, `$Contact` is a label
+for the Web IDL type definition and may be used throughout the Web IDL Bindings
+Section, with the uses converted to the integer index of the type when the
 `.wat` is converted to `.wasm`.
 
 
@@ -262,7 +266,7 @@ text-format) statement would define a Web IDL Function type compatible with
 `addContact`:
 
 ```wasm
-(webidl-type $AddContactFuncWebIDL
+(@webidl type $AddContactFuncWebIDL
   (func (method any) (param (dict $Contact) DOMString) (result bool)))
 ```
 
@@ -280,7 +284,7 @@ type which the WebAssembly module would use to call `addContact`:
 With all these, a Web IDL function binding named `$addContactBinding` can be defined:
 
 ```wasm
-(webidl-func-binding $addContactBinding import $AddContactFuncWasm $AddContactFuncWebIDL
+(@webidl func-binding $addContactBinding import $AddContactFuncWasm $AddContactFuncWebIDL
   (param
     (as type=any idx=0)
     (dict $Contact (utf8-str type=DOMString off-idx=1 len-idx=2) (as type=long idx=3))
@@ -297,7 +301,7 @@ Lastly, we need the WebAssembly function import statement (that is called by the
 
 ```wasm
 (func $addContact (import "ContactDB" "addContact") (type $AddContactFuncWasm))
-(webidl-bind $addContact $addContactBinding)
+(@webidl bind $addContact $addContactBinding)
 ```
 
 The `webidl-bind` statement is necessary because a single binding can be used
@@ -465,10 +469,12 @@ The signature of `encodeInto` could be defined with these (strawman text-format)
 statements:
 
 ```wasm
-(webidl-type $TEEIR
+(@webidl type $TextEncoderEncodeIntoResult
    (dict (field "read" unsigned long long) (field "written" unsigned long long)))
-(webidl-type $EncodeIntoFuncWebIDL
-   (func (method any) (param USVString Uint8Array) (result (dict $TEEIR))))
+(@webidl type $EncodeIntoFuncWebIDL
+   (func (method any)
+      (param USVString Uint8Array)
+      (result (dict $TextEncoderEncodeIntoResult))))
 ```
 
 The WebAssembly signature and import which would be used to call `encodeInto`
@@ -483,10 +489,10 @@ Finally, the binding is accomplished with these two (strawman text-format)
 statements:
 
 ```wasm
-(webidl-func-binding $encodeIntoBinding import $EncodeIntoFuncWasm $EncodeIntoFuncWebIDL
+(@webidl func-binding $encodeIntoBinding import $EncodeIntoFuncWasm $EncodeIntoFuncWebIDL
     (param (as type=any idx=0) (as type=any idx=1) (view type=uint8 off-idx=2 len-idx=3))
     (result (as type=i64 (field "read" (get 0))) (as type=i64 (field "written" (get 0)))))
-(webidl-bind $encodeInto $encodeIntoBinding)
+(@webidl bind $encodeInto $encodeIntoBinding)
 ```
 
 This function binding can be visualized:
@@ -499,14 +505,14 @@ import the `TextEncoder` constructor, with the strawman
 (the callee constructor).
 
 ```wasm
-(webidl-type $CtorFuncWebIDL (func (constructor default-new-target) (result any)))
+(@webidl type $CtorFuncWebIDL (func (constructor default-new-target) (result any)))
 
 (type $CtorFuncWasm (func (result anyref)))
 (func $TextEncoderCtor (import "TextEncoder" "ctor") (type $CtorFuncWasm))
 
-(webidl-func-binding $CtorBinding import $CtorFuncWasm $CtorFuncWebIDL
+(@webidl func-binding $CtorBinding import $CtorFuncWasm $CtorFuncWebIDL
   (result (as type=anyref (get 0))))
-(webidl-bind $TextEncoderCtor $CtorBinding)
+(@webidl bind $TextEncoderCtor $CtorBinding)
 ```
 
 With these bindings, a WebAssembly module can call `$TextEncoderCtor`, store
@@ -629,6 +635,8 @@ constraints of Web APIs' backwards-compatibility.
 [Exception Tags]: https://github.com/WebAssembly/exception-handling/blob/master/proposals/Exceptions.md#exceptions
 
 [ESM-integration]: https://github.com/WebAssembly/esm-integration
+
+[Custom Annotation]: https://github.com/WebAssembly/annotations/blob/master/proposals/annotations/Overview.md
 
 [HTML module loader]: https://html.spec.whatwg.org/multipage/webappapis.html#integration-with-the-javascript-module-system
 [`TextEncoder`]: https://encoding.spec.whatwg.org/#interface-textencoder
