@@ -1,0 +1,118 @@
+<pre class='metadata'>
+Title: WebAssembly webIDL Bindings
+Shortname: wasmWebIDLBinding
+Level: 1
+Status: ED
+Group: wasm
+TR: http://www.w3.org/TR/wasm-webidl-binding-1
+URL: http://webassembly.github.io/spec/webidl-binding
+Editor: Luke Wagner, Mozilla Inc., luke@mozilla.com
+Editor: Francis McCabe, Google Inc., fgm@google.com
+Abstract: Custom WebAssembly section for representing webIDL bindings for imported functions.
+Markup Shorthands: markdown yes
+</pre>
+
+<pre class='biblio'>
+{
+  "WEBASSEMBLY": {
+    "href": "https://webassembly.github.io/spec/core/",
+    "title": "WebAssembly Core Specification",
+    "publisher": "W3C WebAssembly Community Group",
+    "status": "Draft"
+  },
+  "webIDL" : {
+    "href" : "http://heycam.github.io/webidl",
+    "title" : "Web IDL",
+    "publisher" : "W3C",
+    "status" : "Editor's Draft"
+  }
+  "webIDLBinary" : {
+    "href" : "http://heycam.github.io/wasm-webidl-1",
+    "title" : "Binary Representation of Web IDL",
+    "publisher" : "W3C",
+    "status" : "Editor's Draft"
+  }
+}
+</pre>
+
+Introduction {#intro}
+=====================
+
+This specification describes the format and semantics of a WebAssembly embedder
+specification [[!WEBASSEMBLY/custom section]] called "webIDL-binding".
+
+This specification allows an embedder to efficiently map imports exposed by the
+WebAssembly module to functions whose implementations are known by the host.
+
+This specification is limited to those functions that have a webIDL
+specification. Other host environments may require different means of
+description and may require their own custom section.
+
+This specification is presented in two parts: a description of the features of
+the specification in terms of a surface syntax. This surface syntax may be
+present in source representations of WebAssembly modules.
+
+The second part of the specification describes the binary encoding of contents
+of the `webIDL-binding` custom section.
+
+
+WebIDL Binding Custom Section {#custom-section}
+============================
+
+Binding Map {#binding-map}
+-----------
+
+WebIDL Types {#webIDL-types}
+------------
+
+Binding Operators {#binding-expressions}
+==================
+
+As Cast
+-------
+
+Utf8 String
+----------
+
+Utf8 CString
+-----------
+
+I32-to-Enum
+-----------
+
+Typed View
+---------
+
+Typed Copy
+---------
+
+Dictionary
+----------
+
+Bind
+----
+
+Get Cast
+-------
+
+Alloc Utf8 String
+----------------
+
+Alloc Copy
+----------
+
+Enum to I32
+-----------
+
+Dictionary Field
+---------------
+
+Bind Import
+-----------
+
+Conformance Requirements {#conformance}
+========================
+
+Binary Encoding {#binary}
+==============
+

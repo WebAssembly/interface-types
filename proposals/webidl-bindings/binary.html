@@ -1,0 +1,879 @@
+<!doctype html><html lang="en">
+ <head>
+  <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+  <title>Binary Representation of WebIDL</title>
+  <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
+  <meta content="ED" name="w3c-status">
+  <meta content="A binary encoding of webIDL suitable for processing by WASM engines." name="abstract">
+  <link href="https://www.w3.org/StyleSheets/TR/2016/W3C-ED" rel="stylesheet" type="text/css">
+  <meta content="Bikeshed version 4d208866a95a1121fceca549a36bfb09c5bf1705" name="generator">
+  <link href="http://www.w3.org/TR/wasm-webidl-1" rel="canonical">
+<style>/* style-md-lists */
+
+/* This is a weird hack for me not yet following the commonmark spec
+   regarding paragraph and lists. */
+[data-md] > :first-child {
+    margin-top: 0;
+}
+[data-md] > :last-child {
+    margin-bottom: 0;
+}</style>
+<style>/* style-counters */
+
+body {
+    counter-reset: example figure issue;
+}
+.issue {
+    counter-increment: issue;
+}
+.issue:not(.no-marker)::before {
+    content: "Issue " counter(issue);
+}
+
+.example {
+    counter-increment: example;
+}
+.example:not(.no-marker)::before {
+    content: "Example " counter(example);
+}
+.invalid.example:not(.no-marker)::before,
+.illegal.example:not(.no-marker)::before {
+    content: "Invalid Example" counter(example);
+}
+
+figcaption {
+    counter-increment: figure;
+}
+figcaption:not(.no-marker)::before {
+    content: "Figure " counter(figure) " ";
+}</style>
+<style>/* style-syntax-highlighting */
+
+.highlight:not(.idl) { background: hsl(24, 20%, 95%); }
+code.highlight { padding: .1em; border-radius: .3em; }
+pre.highlight, pre > code.highlight { display: block; padding: 1em; margin: .5em 0; overflow: auto; border-radius: 0; }
+c-[a] { color: #990055 } /* Keyword.Declaration */
+c-[b] { color: #990055 } /* Keyword.Type */
+c-[c] { color: #708090 } /* Comment */
+c-[d] { color: #708090 } /* Comment.Multiline */
+c-[e] { color: #0077aa } /* Name.Attribute */
+c-[f] { color: #669900 } /* Name.Tag */
+c-[g] { color: #222222 } /* Name.Variable */
+c-[k] { color: #990055 } /* Keyword */
+c-[l] { color: #000000 } /* Literal */
+c-[m] { color: #000000 } /* Literal.Number */
+c-[n] { color: #0077aa } /* Name */
+c-[o] { color: #999999 } /* Operator */
+c-[p] { color: #999999 } /* Punctuation */
+c-[s] { color: #a67f59 } /* Literal.String */
+c-[t] { color: #a67f59 } /* Literal.String.Single */
+c-[u] { color: #a67f59 } /* Literal.String.Double */
+c-[cp] { color: #708090 } /* Comment.Preproc */
+c-[c1] { color: #708090 } /* Comment.Single */
+c-[cs] { color: #708090 } /* Comment.Special */
+c-[kc] { color: #990055 } /* Keyword.Constant */
+c-[kn] { color: #990055 } /* Keyword.Namespace */
+c-[kp] { color: #990055 } /* Keyword.Pseudo */
+c-[kr] { color: #990055 } /* Keyword.Reserved */
+c-[ld] { color: #000000 } /* Literal.Date */
+c-[nc] { color: #0077aa } /* Name.Class */
+c-[no] { color: #0077aa } /* Name.Constant */
+c-[nd] { color: #0077aa } /* Name.Decorator */
+c-[ni] { color: #0077aa } /* Name.Entity */
+c-[ne] { color: #0077aa } /* Name.Exception */
+c-[nf] { color: #0077aa } /* Name.Function */
+c-[nl] { color: #0077aa } /* Name.Label */
+c-[nn] { color: #0077aa } /* Name.Namespace */
+c-[py] { color: #0077aa } /* Name.Property */
+c-[ow] { color: #999999 } /* Operator.Word */
+c-[mb] { color: #000000 } /* Literal.Number.Bin */
+c-[mf] { color: #000000 } /* Literal.Number.Float */
+c-[mh] { color: #000000 } /* Literal.Number.Hex */
+c-[mi] { color: #000000 } /* Literal.Number.Integer */
+c-[mo] { color: #000000 } /* Literal.Number.Oct */
+c-[sb] { color: #a67f59 } /* Literal.String.Backtick */
+c-[sc] { color: #a67f59 } /* Literal.String.Char */
+c-[sd] { color: #a67f59 } /* Literal.String.Doc */
+c-[se] { color: #a67f59 } /* Literal.String.Escape */
+c-[sh] { color: #a67f59 } /* Literal.String.Heredoc */
+c-[si] { color: #a67f59 } /* Literal.String.Interpol */
+c-[sx] { color: #a67f59 } /* Literal.String.Other */
+c-[sr] { color: #a67f59 } /* Literal.String.Regex */
+c-[ss] { color: #a67f59 } /* Literal.String.Symbol */
+c-[vc] { color: #0077aa } /* Name.Variable.Class */
+c-[vg] { color: #0077aa } /* Name.Variable.Global */
+c-[vi] { color: #0077aa } /* Name.Variable.Instance */
+c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
+</style>
+<style>/* style-selflinks */
+
+.heading, .issue, .note, .example, li, dt {
+    position: relative;
+}
+a.self-link {
+    position: absolute;
+    top: 0;
+    left: calc(-1 * (3.5rem - 26px));
+    width: calc(3.5rem - 26px);
+    height: 2em;
+    text-align: center;
+    border: none;
+    transition: opacity .2s;
+    opacity: .5;
+}
+a.self-link:hover {
+    opacity: 1;
+}
+.heading > a.self-link {
+    font-size: 83%;
+}
+li > a.self-link {
+    left: calc(-1 * (3.5rem - 26px) - 2em);
+}
+dfn > a.self-link {
+    top: auto;
+    left: auto;
+    opacity: 0;
+    width: 1.5em;
+    height: 1.5em;
+    background: gray;
+    color: white;
+    font-style: normal;
+    transition: opacity .2s, background-color .2s, color .2s;
+}
+dfn:hover > a.self-link {
+    opacity: 1;
+}
+dfn > a.self-link:hover {
+    color: black;
+}
+
+a.self-link::before            { content: "¶"; }
+.heading > a.self-link::before { content: "§"; }
+dfn > a.self-link::before      { content: "#"; }</style>
+<style>/* style-autolinks */
+
+.css.css, .property.property, .descriptor.descriptor {
+    color: #005a9c;
+    font-size: inherit;
+    font-family: inherit;
+}
+.css::before, .property::before, .descriptor::before {
+    content: "‘";
+}
+.css::after, .property::after, .descriptor::after {
+    content: "’";
+}
+.property, .descriptor {
+    /* Don't wrap property and descriptor names */
+    white-space: nowrap;
+}
+.type { /* CSS value <type> */
+    font-style: italic;
+}
+pre .property::before, pre .property::after {
+    content: "";
+}
+[data-link-type="property"]::before,
+[data-link-type="propdesc"]::before,
+[data-link-type="descriptor"]::before,
+[data-link-type="value"]::before,
+[data-link-type="function"]::before,
+[data-link-type="at-rule"]::before,
+[data-link-type="selector"]::before,
+[data-link-type="maybe"]::before {
+    content: "‘";
+}
+[data-link-type="property"]::after,
+[data-link-type="propdesc"]::after,
+[data-link-type="descriptor"]::after,
+[data-link-type="value"]::after,
+[data-link-type="function"]::after,
+[data-link-type="at-rule"]::after,
+[data-link-type="selector"]::after,
+[data-link-type="maybe"]::after {
+    content: "’";
+}
+
+[data-link-type].production::before,
+[data-link-type].production::after,
+.prod [data-link-type]::before,
+.prod [data-link-type]::after {
+    content: "";
+}
+
+[data-link-type=element],
+[data-link-type=element-attr] {
+    font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    font-size: .9em;
+}
+[data-link-type=element]::before { content: "<" }
+[data-link-type=element]::after  { content: ">" }
+
+[data-link-type=biblio] {
+    white-space: pre;
+}</style>
+ <body class="h-entry">
+  <div class="head">
+   <p data-fill-with="logo"><a class="logo" href="https://www.w3.org/"> <img alt="W3C" height="48" src="https://www.w3.org/StyleSheets/TR/2016/logos/W3C" width="72"> </a> </p>
+   <h1 class="p-name no-ref" id="title">Binary Representation of WebIDL</h1>
+   <h2 class="no-num no-toc no-ref heading settled" id="subtitle"><span class="content">Editor’s Draft, <time class="dt-updated" datetime="2019-04-18">18 April 2019</time></span></h2>
+   <div data-fill-with="spec-metadata">
+    <dl>
+     <dt>This version:
+     <dd><a class="u-url" href="http://webassembly.github.io/spec/webidl">http://webassembly.github.io/spec/webidl</a>
+     <dt>Latest published version:
+     <dd><a href="http://www.w3.org/TR/wasm-webidl-1">http://www.w3.org/TR/wasm-webidl-1</a>
+     <dt class="editor">Editor:
+     <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:fgm@google.com">Francis McCabe</a> (<span class="p-org org">Google Inc.</span>)
+     <dt>Issue Tracking:
+     <dd><a href="https://github.com/WebAssembly/spec/labels/binarywebidl-1">GitHub Issues</a>
+    </dl>
+   </div>
+   <div data-fill-with="warning"></div>
+   <p class="copyright" data-fill-with="copyright"><a href="http://www.w3.org/Consortium/Legal/ipr-notice#Copyright">Copyright</a> © 2019 <a href="http://www.w3.org/"><abbr title="World Wide Web Consortium">W3C</abbr></a><sup>®</sup> (<a href="http://www.csail.mit.edu/"><abbr title="Massachusetts Institute of Technology">MIT</abbr></a>, <a href="http://www.ercim.eu/"><abbr title="European Research Consortium for Informatics and Mathematics">ERCIM</abbr></a>, <a href="http://www.keio.ac.jp/">Keio</a>, <a href="https://ev.buaa.edu.cn/">Beihang</a>). W3C <a href="http://www.w3.org/Consortium/Legal/ipr-notice#Legal_Disclaimer">liability</a>, <a href="http://www.w3.org/Consortium/Legal/ipr-notice#W3C_Trademarks">trademark</a> and <a href="http://www.w3.org/Consortium/Legal/2015/copyright-software-and-document">permissive document license</a> rules apply. </p>
+   <hr title="Separator for header">
+  </div>
+  <div class="p-summary" data-fill-with="abstract">
+   <h2 class="no-num no-toc no-ref heading settled" id="abstract"><span class="content">Abstract</span></h2>
+   <p>A binary encoding of webIDL suitable for processing by WASM engines.</p>
+    Part of a collection of related documents:
+the <a href="https://www.w3.org/TR/wasm-core/">Core WebAssembly Specification</a>,
+the <a href="https://www.w3.org/TR/wasm-js-api/">WebAssembly JS Interface</a>,
+and the <a href="https://www.w3.org/TR/wasm-web-api/">WebAssembly Web API</a>. 
+  </div>
+  <h2 class="no-num no-toc no-ref heading settled" id="status"><span class="content">Status of this document</span></h2>
+  <div data-fill-with="status">
+   <p> This is a public copy of the editors’ draft.
+	It is provided for discussion only and may change at any moment.
+	Its publication here does not imply endorsement of its contents by W3C.
+	Don’t cite this document other than as work in progress. </p>
+   <p> <a href="https://github.com/WebAssembly/spec/issues">GitHub Issues</a> are preferred for discussion of this specification.
+  All issues and comments are <a href="https://github.com/WebAssembly/spec/issues?utf8=%E2%9C%93&amp;q=is%3Aissue++">archived</a>. </p>
+   <p> This document was produced by the <a href="https://www.w3.org/wasm/">WebAssembly Working Group</a>. </p>
+   <p> This document was produced by a group operating under
+	the <a href="https://www.w3.org/Consortium/Patent-Policy/">W3C Patent Policy</a>.
+	W3C maintains a <a href="https://www.w3.org/2004/01/pp-impl/101196/status" rel="disclosure">public list of any patent disclosures</a> made in connection with the deliverables of the group;
+	that page also includes instructions for disclosing a patent.
+	An individual who has actual knowledge of a patent which the individual believes contains <a href="https://www.w3.org/Consortium/Patent-Policy/#def-essential">Essential Claim(s)</a> must disclose the information in accordance with <a href="https://www.w3.org/Consortium/Patent-Policy/#sec-Disclosure">section 6 of the W3C Patent Policy</a>. </p>
+   <p> This document is governed by the <a href="https://www.w3.org/2019/Process-20190301/" id="w3c_process_revision">1 March 2019 W3C Process Document</a>. </p>
+   <p></p>
+  </div>
+  <div data-fill-with="at-risk"></div>
+  <nav data-fill-with="table-of-contents" id="toc">
+   <h2 class="no-num no-toc no-ref" id="contents">Table of Contents</h2>
+   <ol class="toc" role="directory">
+    <li>
+     <a href="#intro"><span class="secno">1</span> <span class="content">Introduction</span></a>
+     <ol class="toc">
+      <li><a href="#notation"><span class="secno">1.1</span> <span class="content">Notation</span></a>
+     </ol>
+    <li>
+     <a href="#ast"><span class="secno">2</span> <span class="content">Binary AST</span></a>
+     <ol class="toc">
+      <li><a href="#integer-encoding"><span class="secno">2.1</span> <span class="content">Encoding Integers</span></a>
+      <li><a href="#vector-encoding"><span class="secno">2.2</span> <span class="content">Encoding Vectors</span></a>
+      <li><a href="#string-encoding"><span class="secno">2.3</span> <span class="content">Encoding Strings</span></a>
+      <li><a href="#standard-scheme"><span class="secno">2.4</span> <span class="content">Standard Scheme</span></a>
+     </ol>
+    <li>
+     <a href="#top-level"><span class="secno">3</span> <span class="content">Top-level Elements</span></a>
+     <ol class="toc">
+      <li><a href="#top-level-index"><span class="secno">3.1</span> <span class="content">Top-level Index</span></a>
+      <li><a href="#type-def"><span class="secno">3.2</span> <span class="content">TypeDef</span></a>
+      <li><a href="#interface-def"><span class="secno">3.3</span> <span class="content">InterfaceDef</span></a>
+      <li><a href="#dictionary-def"><span class="secno">3.4</span> <span class="content">DictionaryDef</span></a>
+      <li><a href="#enumeration-def"><span class="secno">3.5</span> <span class="content">EnumerationDef</span></a>
+      <li><a href="#namespace-def"><span class="secno">3.6</span> <span class="content">NamespaceDef</span></a>
+     </ol>
+    <li>
+     <a href="#type"><span class="secno">4</span> <span class="content">Type</span></a>
+     <ol class="toc">
+      <li><a href="#any-type"><span class="secno">4.1</span> <span class="content">Any</span></a>
+     </ol>
+    <li>
+     <a href="#numeric-types"><span class="secno">5</span> <span class="content">Numeric Types</span></a>
+     <ol class="toc">
+      <li><a href="#boolean-type"><span class="secno">5.1</span> <span class="content">Boolean</span></a>
+      <li><a href="#octet-type"><span class="secno">5.2</span> <span class="content">Octet</span></a>
+      <li><a href="#short-type"><span class="secno">5.3</span> <span class="content">Short</span></a>
+      <li><a href="#unsigned-short-type"><span class="secno">5.4</span> <span class="content">Unsigned Short</span></a>
+      <li><a href="#long-type"><span class="secno">5.5</span> <span class="content">Long</span></a>
+      <li><a href="#unsigned-long-type"><span class="secno">5.6</span> <span class="content">Unsigned Long</span></a>
+      <li><a href="#long-long-type"><span class="secno">5.7</span> <span class="content">Long Long</span></a>
+      <li><a href="#unsigned-long-long-type"><span class="secno">5.8</span> <span class="content">Unsigned Long Long</span></a>
+      <li><a href="#float-type"><span class="secno">5.9</span> <span class="content">Float</span></a>
+      <li><a href="#unrestricted-float-type"><span class="secno">5.10</span> <span class="content">Unrestricted Float</span></a>
+      <li><a href="#double-type"><span class="secno">5.11</span> <span class="content">Double</span></a>
+      <li><a href="#unrestricted-double-type"><span class="secno">5.12</span> <span class="content">Unrestricted Double</span></a>
+     </ol>
+    <li>
+     <a href="#string-style-types"><span class="secno">6</span> <span class="content">String Style Types</span></a>
+     <ol class="toc">
+      <li><a href="#dom-string-type"><span class="secno">6.1</span> <span class="content">DOMString</span></a>
+      <li><a href="#byte-string-type"><span class="secno">6.2</span> <span class="content">ByteString</span></a>
+      <li><a href="#usv-string-type"><span class="secno">6.3</span> <span class="content">USVString</span></a>
+      <li><a href="#object-type"><span class="secno">6.4</span> <span class="content">Object</span></a>
+      <li><a href="#symbol-type"><span class="secno">6.5</span> <span class="content">Symbol</span></a>
+      <li><a href="#error-type"><span class="secno">6.6</span> <span class="content">Error</span></a>
+     </ol>
+    <li>
+     <a href="#type-combinations"><span class="secno">7</span> <span class="content">Type Combinations</span></a>
+     <ol class="toc">
+      <li><a href="#parameterized-type"><span class="secno">7.1</span> <span class="content">Parameterized Type</span></a>
+      <li><a href="#nullable-type"><span class="secno">7.2</span> <span class="content">Nullable Type</span></a>
+      <li><a href="#sequence-type"><span class="secno">7.3</span> <span class="content">Sequence Type</span></a>
+      <li><a href="#promise-type"><span class="secno">7.4</span> <span class="content">Promise Type</span></a>
+      <li><a href="#record-type"><span class="secno">7.5</span> <span class="content">Record Type</span></a>
+      <li><a href="#function-type"><span class="secno">7.6</span> <span class="content">Function Type</span></a>
+      <li><a href="#frozen-array-type"><span class="secno">7.7</span> <span class="content">FrozenArray Type</span></a>
+     </ol>
+    <li>
+     <a href="#buffer-source-types"><span class="secno">8</span> <span class="content">Buffer Source Types</span></a>
+     <ol class="toc">
+      <li><a href="#arraybuffer-type"><span class="secno">8.1</span> <span class="content">ArrayBuffer Type</span></a>
+      <li><a href="#dataview-type"><span class="secno">8.2</span> <span class="content">DataView Type</span></a>
+      <li><a href="#int8array-type"><span class="secno">8.3</span> <span class="content">Int8Array Type</span></a>
+      <li><a href="#int16array-type"><span class="secno">8.4</span> <span class="content">Int16Array Type</span></a>
+      <li><a href="#int32array-type"><span class="secno">8.5</span> <span class="content">Int32Array Type</span></a>
+      <li><a href="#uint8array-type"><span class="secno">8.6</span> <span class="content">Uint8Array Type</span></a>
+      <li><a href="#uint16array-type"><span class="secno">8.7</span> <span class="content">Uint16Array Type</span></a>
+      <li><a href="#uint32array-type"><span class="secno">8.8</span> <span class="content">Uint32Array Type</span></a>
+      <li><a href="#float32array-type"><span class="secno">8.9</span> <span class="content">Float32Array Type</span></a>
+      <li><a href="#float64array-type"><span class="secno">8.10</span> <span class="content">Float64Array Type</span></a>
+     </ol>
+    <li>
+     <a href="#compound-types"><span class="secno">9</span> <span class="content">Compound Types</span></a>
+     <ol class="toc">
+      <li><a href="#union-type"><span class="secno">9.1</span> <span class="content">Union Type</span></a>
+      <li><a href="#annotated-types"><span class="secno">9.2</span> <span class="content">Annotated Types</span></a>
+      <li><a href="#extended-attributes"><span class="secno">9.3</span> <span class="content">Extended Attributes</span></a>
+     </ol>
+    <li>
+     <a href="#interface-type"><span class="secno">10</span> <span class="content">Interface Definition</span></a>
+     <ol class="toc">
+      <li><a href="#constant-member"><span class="secno">10.1</span> <span class="content">Constant Member</span></a>
+      <li><a href="#regular-member"><span class="secno">10.2</span> <span class="content">Regular Member</span></a>
+      <li><a href="#static-member"><span class="secno">10.3</span> <span class="content">Static Member</span></a>
+      <li><a href="#operation-member"><span class="secno">10.4</span> <span class="content">Operation Member</span></a>
+      <li><a href="#special-operation-member"><span class="secno">10.5</span> <span class="content">Special Operation Member</span></a>
+      <li><a href="#iterable-member"><span class="secno">10.6</span> <span class="content">IterableMember</span></a>
+      <li><a href="#annotated-member"><span class="secno">10.7</span> <span class="content">Annotated Member</span></a>
+     </ol>
+    <li>
+     <a href="#worked-examples"><span class="secno">11</span> <span class="content">Examples</span></a>
+     <ol class="toc">
+      <li><a href="#simple-interface-examples"><span class="secno">11.1</span> <span class="content">Simple Interface Examples</span></a>
+     </ol>
+    <li>
+     <a href="#conformance"><span class="secno"></span> <span class="content"> Conformance</span></a>
+     <ol class="toc">
+      <li><a href="#document-conventions"><span class="secno"></span> <span class="content"> Document conventions</span></a>
+     </ol>
+    <li>
+     <a href="#references"><span class="secno"></span> <span class="content">References</span></a>
+     <ol class="toc">
+      <li><a href="#normative"><span class="secno"></span> <span class="content">Normative References</span></a>
+     </ol>
+   </ol>
+  </nav>
+  <main>
+   <h2 class="heading settled" data-level="1" id="intro"><span class="secno">1. </span><span class="content">Introduction</span><a class="self-link" href="#intro"></a></h2>
+   <p>In order to be able to process webIDL signatures efficiently it is
+convenient to support a binary representation of the webIDL.</p>
+   <p>This specification mirrors the official specification <a data-link-type="biblio" href="#biblio-webidl">[webIDL]</a> in most
+ways. However, the binary encoding may admit non-legal forms of
+webIDL. Furthermore, some of the artifacts of webIDL do not apply to any binary
+encoding.</p>
+   <p>A webIDL specification consists of a sequence of top-level elements. Each of
+these top-level elements may define a type; an interface; or a name space.</p>
+   <h3 class="heading settled" data-level="1.1" id="notation"><span class="secno">1.1. </span><span class="content">Notation</span><a class="self-link" href="#notation"></a></h3>
+   <p>A production that defines a part of this encoding is written in the form:</p>
+<pre>NT(Arg) => Body
+</pre>
+   where <em>Body</em> is a sequence of terminals and non-terminals. 
+   <p>The terminals are either single characters (ASCII) or byte codes -- represented
+as hex sequences.</p>
+   <p>A Non Terminal is represented as a name enclosed in angle brackets followed
+optionally by an argument in parentheses and/or a repeat count -- a number or
+argument enclosed in braces.</p>
+   <p>Multiple productions may be applicable to a given non-terminal; these are
+represented as multiple rules.</p>
+   <p>Non terminals may have argument expressions, the constraint on the production is
+that all occurrences of a given argument variable must have the same value.</p>
+   <div class="example" id="example-40ee0c84">
+    <a class="self-link" href="#example-40ee0c84"></a> For example, in the production: 
+<pre>NullableType => &lt;NL> Type
+</pre>
+    the term <code>Type</code> refers to the non terminal <code>Type</code>. 
+   </div>
+   <div class="example" id="example-775059bc">
+    <a class="self-link" href="#example-775059bc"></a> Similary, the production: 
+<pre>String => u32(C) CodePoint{C}
+</pre>
+    <p>denotes the fact that a <code>String</code> is represented by a count <code>C</code> -- which
+satisfies the <code>u32</code> non-terminal -- followed by <code>C</code> CodePoints.</p>
+   </div>
+   <h2 class="heading settled" data-level="2" id="ast"><span class="secno">2. </span><span class="content">Binary AST</span><a class="self-link" href="#ast"></a></h2>
+   <p>The binary encoding is layered on a basic set of primitives that
+permit the encoding of integers, strings and combinations of entities.</p>
+   <h3 class="heading settled" data-level="2.1" id="integer-encoding"><span class="secno">2.1. </span><span class="content">Encoding Integers</span><a class="self-link" href="#integer-encoding"></a></h3>
+   <p>Integers are encoded using the LEB128 variable length integer encoding. Although
+the LEB format is able to represent both signed and unsigned integers, this
+specification only uses unsigned integers.</p>
+<pre>7bit(0) => 0x00
+7bit(1) => 0x01
+...
+7bit(127) => 0x7f
+
+8bit(0) => 0x80
+8bit(1) => 0x81
+...
+8bit(127) => 0xff
+
+u32(Ix) => 7bit(Ix)
+u32(Ix&lt;&lt;7+Lx) => 8bit(Lx) u32(Ix)
+</pre>
+   <h3 class="heading settled" data-level="2.2" id="vector-encoding"><span class="secno">2.2. </span><span class="content">Encoding Vectors</span><a class="self-link" href="#vector-encoding"></a></h3>
+   <p>A vector of entities is encoded as a length integer (itself encoded as LEB128)
+following length entries of the vector -- each of which is of the expected type.</p>
+   <h3 class="heading settled" data-level="2.3" id="string-encoding"><span class="secno">2.3. </span><span class="content">Encoding Strings</span><a class="self-link" href="#string-encoding"></a></h3>
+   <p>A string is encoded as a vector of Codepoints represented as sequences of UTF8
+bytes.</p>
+<pre>String => u32(L) CodePoint{L}
+</pre>
+   <h3 class="heading settled" data-level="2.4" id="standard-scheme"><span class="secno">2.4. </span><span class="content">Standard Scheme</span><a class="self-link" href="#standard-scheme"></a></h3>
+   <p>All of the encodings follow a common scheme, consisting of a single lead-in byte
+followed by type specific content. Any collections are preceded by a length
+(encoded as an LEB) so that a streaming parser knows exactly how much input to
+consume.</p>
+   <p>For convenience, in the presentation, where a literal string is required in the
+encoding it is listed using the string’s characters spaced out.</p>
+   <div class="example" id="example-03bd8fa0">
+    <a class="self-link" href="#example-03bd8fa0"></a> For example, the encoding: 
+<pre>0x09 D O M S t r i n g
+</pre>
+    is a convenience form of the sequence of bytes: 
+<pre>0x09 0x44 0x4f 0x4d 0x53 0x74 0x72 0x69 0x6e 0x67
+</pre>
+   </div>
+   <p class="note" role="note"><span>Note:</span> all of the type names defined in this document use only ASCII characters
+in their name.</p>
+   <p>Many of the primitive types are encoded as single bytes; and where applicable,
+use the same encoding as for their WASM counterparts.</p>
+   <h2 class="heading settled" data-level="3" id="top-level"><span class="secno">3. </span><span class="content">Top-level Elements</span><a class="self-link" href="#top-level"></a></h2>
+   <p>A complete encoding of a webIDL consists of a sequence of top-level
+elements. These top-level elements can be viewed as defining a set of interfaces
+and/or types; overall, the set of top-level elements define a <em>scope</em> in the
+form of an array; elements of which are referenced by numeric index.</p>
+<pre>WebIDL => u32(C) TopLevel{C}
+
+TopLevel => TypeDef
+TopLevel => InterfaceDef
+TopLevel => DictionaryDef
+TopLevel => EnumerationDef
+TopLevel => NamespaceDef
+</pre>
+   <h3 class="heading settled" data-level="3.1" id="top-level-index"><span class="secno">3.1. </span><span class="content">Top-level Index</span><a class="self-link" href="#top-level-index"></a></h3>
+   <p>Each element of the top-level has an index -- which is the relative position of
+the element in the array of all top-level elements.</p>
+   <h3 class="heading settled" data-level="3.2" id="type-def"><span class="secno">3.2. </span><span class="content">TypeDef</span><a class="self-link" href="#type-def"></a></h3>
+   <p>A <code>TypeDef</code> is a way of giving a name to a type:</p>
+<pre>TypeDef => 0x01 String Type
+</pre>
+   <div class="example" id="example-7be32b7c">
+    <a class="self-link" href="#example-7be32b7c"></a> For example, the webIDL type definition: 
+<pre class="highlight"><c- b>typedef</c-> <c- b>sequence</c->&lt;<c- b>long</c->> <c- g>rows</c->;
+</pre>
+    <p>is represented using</p>
+<pre>0x01 0x04 r o w s 0x7x 0x01 0x7y
+</pre>
+   </div>
+   <h3 class="heading settled" data-level="3.3" id="interface-def"><span class="secno">3.3. </span><span class="content">InterfaceDef</span><a class="self-link" href="#interface-def"></a></h3>
+   <p>An <code>InterfaceDef</code> gives a name to an interface.</p>
+<pre>InterfaceType => 0x02 String Type u32(C) InterfaceMember{C}
+</pre>
+   <h3 class="heading settled" data-level="3.4" id="dictionary-def"><span class="secno">3.4. </span><span class="content">DictionaryDef</span><a class="self-link" href="#dictionary-def"></a></h3>
+<pre>DictionaryDef => 0x03 String Type u32(F) DictionaryMember{F}
+
+DictionaryMember => WriteableDictionaryMember
+DictionaryMember => ReadOnlyDictionaryMember
+DictionaryMember => &lt;AT> String DictionaryMember
+
+WriteableDictionaryMember => 0x01 String Type
+ReadOnlyDictionaryMember => 0x02 String Type
+</pre>
+   <p class="note" role="note"><span>Note:</span> This specification does not support partially specified dictionaries.</p>
+   <h3 class="heading settled" data-level="3.5" id="enumeration-def"><span class="secno">3.5. </span><span class="content">EnumerationDef</span><a class="self-link" href="#enumeration-def"></a></h3>
+   <p>An <code>EnumerationDef</code> defines a type by enumerating its values as one of a set of
+strings.</p>
+<pre>EnumerationDef => 0x04 String u32(C) String{C}
+</pre>
+   <h3 class="heading settled" data-level="3.6" id="namespace-def"><span class="secno">3.6. </span><span class="content">NamespaceDef</span><a class="self-link" href="#namespace-def"></a></h3>
+   <p>A <code>NameSpace</code> simultaneously defines an <code>Interface</code> and a singleton that
+implements that interface.</p>
+<pre>NameSpaceDef => 0x05 String u32(C) NameSpaceMember{C}
+</pre>
+   <p>The <code>NameSpaceMember</code>s are a subset of the <code>InterfaceMember</code>s that refer to
+regular operations and attributes.</p>
+<pre>NameSpaceMember => 0x02 String Type
+NameSpaceMember => &lt;AT> String NameSpaceMember
+</pre>
+   <p class="note" role="note"><span>Note:</span> all elemements of a <code>NameSpace</code> are read-only in nature.</p>
+   <h2 class="heading settled" data-level="4" id="type"><span class="secno">4. </span><span class="content">Type</span><a class="self-link" href="#type"></a></h2>
+   <p>The encoding of types follows a particular pattern: if the type is one
+that is part of webIDL itself then it is encoded using a small number
+that denotes a negative number in the LEB encoding. If the type is a
+reference to a user-defined type; i.e., its a reference to a type that
+is declared in one of InterfaceDef, DictionaryDef, EnumerationDef then
+it is represented as a positive number: the index of its definition in
+the top-level sequence.</p>
+<pre>Type => AnyType
+Type => NumericType
+Type => StringType
+Type => ObjectType
+Type => ErrorType
+Type => ParameterizedType
+Type => BufferSourceType
+Type => CompoundType
+</pre>
+   <h3 class="heading settled" data-level="4.1" id="any-type"><span class="secno">4.1. </span><span class="content">Any</span><a class="self-link" href="#any-type"></a></h3>
+   <p>The <code>AnyType</code> is the top of the type hierarchy.</p>
+<pre>AnyType => 0x7f
+</pre>
+   <h2 class="heading settled" data-level="5" id="numeric-types"><span class="secno">5. </span><span class="content">Numeric Types</span><a class="self-link" href="#numeric-types"></a></h2>
+   <p>The numeric types correspond to numeric values.</p>
+<pre>NumericType => Boolean
+NumericType => Octet
+NumericType => Short
+NumericType => UnsignedShort
+NumericType => Long
+NumericType => UnsignedLong
+NumericType => LongLong
+NumericType => UnsignedLongLong
+NumericType => Float
+NumericType => UnrestrictedFloat
+NumericType => Double
+NumericType => UnrestrictedDouble
+</pre>
+   <h3 class="heading settled" data-level="5.1" id="boolean-type"><span class="secno">5.1. </span><span class="content">Boolean</span><a class="self-link" href="#boolean-type"></a></h3>
+<pre>BooleanType => 0x7e
+</pre>
+   <h3 class="heading settled" data-level="5.2" id="octet-type"><span class="secno">5.2. </span><span class="content">Octet</span><a class="self-link" href="#octet-type"></a></h3>
+<pre>OctetType => 0x7d
+</pre>
+   <p>(Otherwise known as an unsigned byte)</p>
+   <h3 class="heading settled" data-level="5.3" id="short-type"><span class="secno">5.3. </span><span class="content">Short</span><a class="self-link" href="#short-type"></a></h3>
+<pre>ShortType => 0x7c
+</pre>
+   <h3 class="heading settled" data-level="5.4" id="unsigned-short-type"><span class="secno">5.4. </span><span class="content">Unsigned Short</span><a class="self-link" href="#unsigned-short-type"></a></h3>
+<pre>UnsignedShortType => 0x7b
+</pre>
+   <h3 class="heading settled" data-level="5.5" id="long-type"><span class="secno">5.5. </span><span class="content">Long</span><a class="self-link" href="#long-type"></a></h3>
+<pre>LongType => 0x7a
+</pre>
+   <h3 class="heading settled" data-level="5.6" id="unsigned-long-type"><span class="secno">5.6. </span><span class="content">Unsigned Long</span><a class="self-link" href="#unsigned-long-type"></a></h3>
+<pre>UnsignedLongType => 0x79
+</pre>
+   <h3 class="heading settled" data-level="5.7" id="long-long-type"><span class="secno">5.7. </span><span class="content">Long Long</span><a class="self-link" href="#long-long-type"></a></h3>
+<pre>LongLongType => 0x78
+</pre>
+   <h3 class="heading settled" data-level="5.8" id="unsigned-long-long-type"><span class="secno">5.8. </span><span class="content">Unsigned Long Long</span><a class="self-link" href="#unsigned-long-long-type"></a></h3>
+<pre>UnsignedLongLongType => 0x77
+</pre>
+   <h3 class="heading settled" data-level="5.9" id="float-type"><span class="secno">5.9. </span><span class="content">Float</span><a class="self-link" href="#float-type"></a></h3>
+<pre>FloatType => 0x76
+</pre>
+   <h3 class="heading settled" data-level="5.10" id="unrestricted-float-type"><span class="secno">5.10. </span><span class="content">Unrestricted Float</span><a class="self-link" href="#unrestricted-float-type"></a></h3>
+<pre>UnrestrictedFloatType => 0x75
+</pre>
+   <h3 class="heading settled" data-level="5.11" id="double-type"><span class="secno">5.11. </span><span class="content">Double</span><a class="self-link" href="#double-type"></a></h3>
+<pre>DoubleType => 0x74
+</pre>
+   <h3 class="heading settled" data-level="5.12" id="unrestricted-double-type"><span class="secno">5.12. </span><span class="content">Unrestricted Double</span><a class="self-link" href="#unrestricted-double-type"></a></h3>
+<pre>UnrestrictedDoubleType => 0x73
+</pre>
+   <h2 class="heading settled" data-level="6" id="string-style-types"><span class="secno">6. </span><span class="content">String Style Types</span><a class="self-link" href="#string-style-types"></a></h2>
+<pre>StringType => DOMStringType
+StringType => ByteStringType
+StringType => USVStringType
+StringType => SymbolType
+</pre>
+   <h3 class="heading settled" data-level="6.1" id="dom-string-type"><span class="secno">6.1. </span><span class="content">DOMString</span><a class="self-link" href="#dom-string-type"></a></h3>
+<pre>DOMStringType => &lt;DS>
+</pre>
+   <h3 class="heading settled" data-level="6.2" id="byte-string-type"><span class="secno">6.2. </span><span class="content">ByteString</span><a class="self-link" href="#byte-string-type"></a></h3>
+<pre>ByteStringType => &lt;BS>
+</pre>
+   <h3 class="heading settled" data-level="6.3" id="usv-string-type"><span class="secno">6.3. </span><span class="content">USVString</span><a class="self-link" href="#usv-string-type"></a></h3>
+<pre>USVStringType => &lt;US>
+</pre>
+   <h3 class="heading settled" data-level="6.4" id="object-type"><span class="secno">6.4. </span><span class="content">Object</span><a class="self-link" href="#object-type"></a></h3>
+<pre>ObjectType => &lt;OB>
+</pre>
+   <h3 class="heading settled" data-level="6.5" id="symbol-type"><span class="secno">6.5. </span><span class="content">Symbol</span><a class="self-link" href="#symbol-type"></a></h3>
+<pre>SymbolType => &lt;SY>
+</pre>
+   <h3 class="heading settled" data-level="6.6" id="error-type"><span class="secno">6.6. </span><span class="content">Error</span><a class="self-link" href="#error-type"></a></h3>
+<pre>ErrorType => &lt;ER>
+</pre>
+   <h2 class="heading settled" data-level="7" id="type-combinations"><span class="secno">7. </span><span class="content">Type Combinations</span><a class="self-link" href="#type-combinations"></a></h2>
+   <p>Type combinations include various forms of parameterized type and
+functions.</p>
+   <h3 class="heading settled" data-level="7.1" id="parameterized-type"><span class="secno">7.1. </span><span class="content">Parameterized Type</span><a class="self-link" href="#parameterized-type"></a></h3>
+   <p>Note that the concept of a parameterized type is not a standard part of web IDL;
+although webIDL has many parameterized types in its specification.</p>
+<pre>ParameterizedType => NullableType
+ParameterizedType => SequenceType
+ParameterizedType => PromiseType
+ParameterizedType => RecordType
+ParameterizedType => FunctionType
+ParameterizedType => FrozenArrayType
+</pre>
+   <p>Some of the standard types are parameterized, for example, the <code>Promise</code> type is
+parameterized in one type argument; although, often, there are additional
+restrictions on the possible instantiations of the parameterized type that are
+not reflected in this specification.</p>
+   <p>A type expression intended to denote <code>Promise(long)</code> would be encoded:</p>
+<pre>PromiseType => &lt;Pt> 0x7a
+</pre>
+   <h3 class="heading settled" data-level="7.2" id="nullable-type"><span class="secno">7.2. </span><span class="content">Nullable Type</span><a class="self-link" href="#nullable-type"></a></h3>
+<pre>NullableType => &lt;NL> Type
+</pre>
+   <h3 class="heading settled" data-level="7.3" id="sequence-type"><span class="secno">7.3. </span><span class="content">Sequence Type</span><a class="self-link" href="#sequence-type"></a></h3>
+<pre>SequenceType => &lt;SQ> Type
+</pre>
+   <h3 class="heading settled" data-level="7.4" id="promise-type"><span class="secno">7.4. </span><span class="content">Promise Type</span><a class="self-link" href="#promise-type"></a></h3>
+<pre>PromiseType => &lt;PO> Type
+</pre>
+   <h3 class="heading settled" data-level="7.5" id="record-type"><span class="secno">7.5. </span><span class="content">Record Type</span><a class="self-link" href="#record-type"></a></h3>
+<pre>RecordType => &lt;RC> Type Type
+</pre>
+   The first type in the vector of type arguments is the type of keys in the record
+and the second is the type of values in the record. 
+   <h3 class="heading settled" data-level="7.6" id="function-type"><span class="secno">7.6. </span><span class="content">Function Type</span><a class="self-link" href="#function-type"></a></h3>
+<pre>FunctionType => 0x60 u32(A) Type{A} u32(R) Type{R}
+</pre>
+   Note that the <code>optional</code> argument in webIDL is not directly modeled in the
+binary representation. Instead, use multiple instances of a function type
+declaration. 
+   <h3 class="heading settled" data-level="7.7" id="frozen-array-type"><span class="secno">7.7. </span><span class="content">FrozenArray Type</span><a class="self-link" href="#frozen-array-type"></a></h3>
+<pre>FrozenArrayType => &lt;FZ> Type
+</pre>
+   <h2 class="heading settled" data-level="8" id="buffer-source-types"><span class="secno">8. </span><span class="content">Buffer Source Types</span><a class="self-link" href="#buffer-source-types"></a></h2>
+<pre>BufferSourceType => ArrayBuffer
+BufferSourceType => DataView
+BufferSourceType => Int8Array
+BufferSourceType => Int16Array
+BufferSourceType => Int32Array
+BufferSourceType => UInt8Array
+BufferSourceType => UInt16Array
+BufferSourceType => UInt32Array
+BufferSourceType => UInt8ClampedArray
+BufferSourceType => Float32Array
+BufferSourceType => Float64Array
+</pre>
+   <h3 class="heading settled" data-level="8.1" id="arraybuffer-type"><span class="secno">8.1. </span><span class="content">ArrayBuffer Type</span><a class="self-link" href="#arraybuffer-type"></a></h3>
+<pre>ArrayBufferType => &lt;AB>
+</pre>
+   <h3 class="heading settled" data-level="8.2" id="dataview-type"><span class="secno">8.2. </span><span class="content">DataView Type</span><a class="self-link" href="#dataview-type"></a></h3>
+<pre>DataViewType => &lt;DV>
+</pre>
+   <h3 class="heading settled" data-level="8.3" id="int8array-type"><span class="secno">8.3. </span><span class="content">Int8Array Type</span><a class="self-link" href="#int8array-type"></a></h3>
+<pre>Int8ArrayType => &lt;I8>
+</pre>
+   <h3 class="heading settled" data-level="8.4" id="int16array-type"><span class="secno">8.4. </span><span class="content">Int16Array Type</span><a class="self-link" href="#int16array-type"></a></h3>
+<pre>Int16ArrayType => &lt;I6>
+</pre>
+   <h3 class="heading settled" data-level="8.5" id="int32array-type"><span class="secno">8.5. </span><span class="content">Int32Array Type</span><a class="self-link" href="#int32array-type"></a></h3>
+<pre>Int32ArrayType => &lt;I3>
+</pre>
+   <h3 class="heading settled" data-level="8.6" id="uint8array-type"><span class="secno">8.6. </span><span class="content">Uint8Array Type</span><a class="self-link" href="#uint8array-type"></a></h3>
+<pre>Uint8ArrayType => &lt;U8>
+</pre>
+   <h3 class="heading settled" data-level="8.7" id="uint16array-type"><span class="secno">8.7. </span><span class="content">Uint16Array Type</span><a class="self-link" href="#uint16array-type"></a></h3>
+<pre>Uint16ArrayType => &lt;U6>
+</pre>
+   <h3 class="heading settled" data-level="8.8" id="uint32array-type"><span class="secno">8.8. </span><span class="content">Uint32Array Type</span><a class="self-link" href="#uint32array-type"></a></h3>
+<pre>Uint32ArrayType => &lt;U3>
+</pre>
+   <h3 class="heading settled" data-level="8.9" id="float32array-type"><span class="secno">8.9. </span><span class="content">Float32Array Type</span><a class="self-link" href="#float32array-type"></a></h3>
+<pre>Float32ArrayType => &lt;FA>
+</pre>
+   <h3 class="heading settled" data-level="8.10" id="float64array-type"><span class="secno">8.10. </span><span class="content">Float64Array Type</span><a class="self-link" href="#float64array-type"></a></h3>
+<pre>Float64ArrayType => &lt;DA>
+</pre>
+   <h2 class="heading settled" data-level="9" id="compound-types"><span class="secno">9. </span><span class="content">Compound Types</span><a class="self-link" href="#compound-types"></a></h2>
+<pre>CompoundType => UnionType
+CompoundType => AnnotatedType
+</pre>
+   <h3 class="heading settled" data-level="9.1" id="union-type"><span class="secno">9.1. </span><span class="content">Union Type</span><a class="self-link" href="#union-type"></a></h3>
+<pre>UnionType => &lt;UN> u32(C) Type{C}
+</pre>
+   <h3 class="heading settled" data-level="9.2" id="annotated-types"><span class="secno">9.2. </span><span class="content">Annotated Types</span><a class="self-link" href="#annotated-types"></a></h3>
+<pre>AnnotatedType => &lt;AT> String Type
+</pre>
+   <p>In this encoding, annotations are not parsed out. A future extension/revision
+may change this.</p>
+   <h3 class="heading settled" data-level="9.3" id="extended-attributes"><span class="secno">9.3. </span><span class="content">Extended Attributes</span><a class="self-link" href="#extended-attributes"></a></h3>
+   <p>In addition to individual types being annotatable (sic) elements of dictionaries
+and interfaces may also be annotated. In this specification we do not specify a
+specific encoding for such extended attributes; we merely represent the
+entireannotation as a string. However, webIDL puts other constraints on the
+legitimate forms of such attributes.</p>
+   <h2 class="heading settled" data-level="10" id="interface-type"><span class="secno">10. </span><span class="content">Interface Definition</span><a class="self-link" href="#interface-type"></a></h2>
+<pre>InterfaceDef => 0x02 String Type u32(C) InterfaceMember{C}
+
+InterfaceMember => ConstantMember
+InterfaceMember => RegularMember
+InterfaceMember => StaticMember
+InterfaceMember => OperationMember
+InterfaceMember => SpecialOperationMember
+InterfaceMember => IterableMember
+InterfaceMember => MaplikeMember
+InterfaceMember => SetlikeMember
+InterfaceMember => AnnotatedInterfaceMember
+
+AnnotatedInterfaceMember => &lt;AT> String InterfaceMember
+</pre>
+   <h3 class="heading settled" data-level="10.1" id="constant-member"><span class="secno">10.1. </span><span class="content">Constant Member</span><a class="self-link" href="#constant-member"></a></h3>
+   <p>Constant members are not supported in the MAP.</p>
+<pre>ConstantMember => 0x01 String Type Value
+</pre>
+   <h3 class="heading settled" data-level="10.2" id="regular-member"><span class="secno">10.2. </span><span class="content">Regular Member</span><a class="self-link" href="#regular-member"></a></h3>
+   <p>A regular member has two variants: readonly and re-assignable:</p>
+<pre>RegularMember => ReadWriteMarker String Type
+
+ReadWriteMarker => 0x02
+ReadWriteMarker => 0x03
+</pre>
+   <p>The value 0x02 signifies a readonly attribute, 0x03 signifies a reassignable
+attribute of the interface.</p>
+   <h3 class="heading settled" data-level="10.3" id="static-member"><span class="secno">10.3. </span><span class="content">Static Member</span><a class="self-link" href="#static-member"></a></h3>
+<pre>StaticMember => 0x04 String Type
+</pre>
+   <h3 class="heading settled" data-level="10.4" id="operation-member"><span class="secno">10.4. </span><span class="content">Operation Member</span><a class="self-link" href="#operation-member"></a></h3>
+   <p>An operation member <em>looks like</em> a regular read-only member whose type is a
+function type:</p>
+<pre>OperationMember => 0x02 String FunctionType
+OperationMember => 0x04 String FunctionType
+</pre>
+   <h3 class="heading settled" data-level="10.5" id="special-operation-member"><span class="secno">10.5. </span><span class="content">Special Operation Member</span><a class="self-link" href="#special-operation-member"></a></h3>
+   <p>A special operation member is a regular operation member with a distinguished
+name, or is a property member:</p>
+<pre>SpecialOperationMember => 0x02 SpecialName FunctionType
+SpecialOperationMember => 0x04 SpecialName FunctionType
+SpecialOperationMember => PropertyMember
+
+PropertyMember => 0x05 SpecialName String Type
+
+SpecialName => 0x06 g e t t e r
+SpecialName => 0x06 s e t t e r
+SpecialName => 0x07 d e l e t e r
+SpecialName => 0x0b s t r i n g i f i e r
+</pre>
+   <h3 class="heading settled" data-level="10.6" id="iterable-member"><span class="secno">10.6. </span><span class="content">IterableMember</span><a class="self-link" href="#iterable-member"></a></h3>
+<pre>IterableMember => 0x05 0x01 Type
+IterableMember => 0x05 0x02 Type Type
+</pre>
+   <p>Only styles of <code>IterableMember</code> are permitted, single-typed and double-typed.
+In the former case, the iterator is a <em>value iterator</em> and in the case of two
+types, it is a <em>pair iterator</em>: the first type is the key type and the second is
+the value type.</p>
+   <h3 class="heading settled" data-level="10.7" id="annotated-member"><span class="secno">10.7. </span><span class="content">Annotated Member</span><a class="self-link" href="#annotated-member"></a></h3>
+<pre>AnnotatedMember => &lt;AT> String InterfaceMember
+</pre>
+   <h2 class="heading settled" data-level="11" id="worked-examples"><span class="secno">11. </span><span class="content">Examples</span><a class="self-link" href="#worked-examples"></a></h2>
+   <p class="note" role="note"><span>Note:</span> Non-normative</p>
+   <p>In this section we give some examples of webIDL that are encoded in this binary
+encoding.</p>
+   <p class="note" role="note"><span>Note:</span> spaces below are not semantically significant; used for
+presentation purposes only.</p>
+   <h3 class="heading settled" data-level="11.1" id="simple-interface-examples"><span class="secno">11.1. </span><span class="content">Simple Interface Examples</span><a class="self-link" href="#simple-interface-examples"></a></h3>
+<pre class="highlight">[<c- g>Exposed</c->=<c- n>Window</c->]
+<c- b>interface</c-> <c- g>Paint</c-> { };
+</pre>
+   <p>This empty interface is encoded:</p>
+<pre>&lt;AT> 0x0e E x p o s e d = W i n d o w
+  0x02 0x05 P a i n t 0x7f 0x00
+</pre>
+   <p>The <code>SolidCOlor</code> interface inherits from the <code>Paint</code> interface:</p>
+<pre class="highlight">[<c- g>Exposed</c->=<c- n>Window</c->]
+<c- b>interface</c-> <c- g>SolidColor</c-> : <c- n>Paint</c-> {
+  <c- b>attribute</c-> <c- b>double</c-> <c- g>red</c->;
+  <c- b>attribute</c-> <c- b>double</c-> <c- g>green</c->;
+  <c- b>attribute</c-> <c- b>double</c-> <c- g>blue</c->;
+};
+</pre>
+   <p>The elements of this interface are <code>double</code> values:</p>
+<pre>&lt;AT> 0x0e E x p o s e d = W i n d o w
+  0x02 0x0a S o l i d C o l o r 0x71 0x05 P a i n t 0x03
+    0x02 0x03 r e d 0x74
+    0x02 0x05 g r e e n 0x74
+    0x04 0x04 b l u e 0x74
+</pre>
+<pre class="highlight">[<c- g>Exposed</c->=<c- n>Window</c->]
+<c- b>interface</c-> <c- g>Pattern</c-> : <c- n>Paint</c-> {
+  <c- b>attribute</c-> <c- b>DOMString</c-> <c- g>imageURL</c->;
+};
+</pre>
+<pre>&lt;AT> 0x0e E x p o s e d = W i n d o w
+  0x02 0x07 P a t t e r n 0x71 0x05 P a i n t 0x01
+    0x02 0x08 i m a g e U R L &lt;DS>
+</pre>
+<pre class="highlight">[<c- g>Exposed</c->=<c- n>Window</c->, <c- g>Constructor</c->]
+<c- b>interface</c-> <c- g>GraphicalWindow</c-> {
+  <c- b>readonly</c-> <c- b>attribute</c-> <c- b>unsigned</c-> <c- b>long</c-> <c- g>width</c->;
+  <c- b>readonly</c-> <c- b>attribute</c-> <c- b>unsigned</c-> <c- b>long</c-> <c- g>height</c->;
+
+  <c- b>attribute</c-> <c- n>Paint</c-> <c- g>currentPaint</c->;
+
+  <c- b>void</c-> <c- g>drawRectangle</c->(<c- b>double</c-> <c- g>x</c->, <c- b>double</c-> <c- g>y</c->, <c- b>double</c-> <c- g>width</c->, <c- b>double</c-> <c- g>height</c->);
+  <c- b>void</c-> <c- g>drawText</c->(<c- b>double</c-> <c- g>x</c->, <c- b>double</c-> <c- g>y</c->, <c- b>DOMString</c-> <c- g>text</c->);
+};
+</pre>
+<pre>&lt;AT> 0x0e E x p o s e d = W i n d o w
+  0x02 0x0f G r a p h i c a l W i n d o w 0x7f 0x05
+    0x02 0x05 w i d t h 0x74
+    0x02 0x06 h e i g h t 0x74
+
+    0x02 0x0c c u r r e n t P a i n t 0x71 0x05 P a i n t
+
+    0x02 0x0d d r a w R e c t a n g l e
+      0x60 0x04 0x74 0x74 0x74 0x74 0x00
+    0x02 0x08 d r a w T e x t
+      0x60 0x03 0x74 0x74 &lt;DS>
+</pre>
+  </main>
+  <h2 class="no-ref no-num heading settled" id="conformance"><span class="content"> Conformance</span><a class="self-link" href="#conformance"></a></h2>
+  <h3 class="heading settled" id="document-conventions"><span class="content"> Document conventions</span><a class="self-link" href="#document-conventions"></a></h3>
+  <p>Conformance requirements are expressed with a combination of
+	descriptive assertions and RFC 2119 terminology. The key words “MUST”,
+	“MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”,
+	“RECOMMENDED”, “MAY”, and “OPTIONAL” in the normative parts of this
+	document are to be interpreted as described in RFC 2119.
+	However, for readability, these words do not appear in all uppercase
+	letters in this specification. </p>
+  <p>All of the text of this specification is normative except sections
+	explicitly marked as non-normative, examples, and notes. <a data-link-type="biblio" href="#biblio-rfc2119">[RFC2119]</a> </p>
+  <p>Examples in this specification are introduced with the words “for example”
+	or are set apart from the normative text with <code>class="example"</code>,
+	like this: </p>
+  <div class="example" id="example-ae2b6bc0">
+   <a class="self-link" href="#example-ae2b6bc0"></a> 
+   <p>This is an example of an informative example. </p>
+  </div>
+  <p>Informative notes begin with the word “Note” and are set apart from the
+	normative text with <code>class="note"</code>, like this: </p>
+  <p class="note" role="note">
+   Note, this is an informative note. 
+<script src="https://www.w3.org/scripts/TR/2016/fixup.js"></script>
+  </p>
+  <h2 class="no-num no-ref heading settled" id="references"><span class="content">References</span><a class="self-link" href="#references"></a></h2>
+  <h3 class="no-num no-ref heading settled" id="normative"><span class="content">Normative References</span><a class="self-link" href="#normative"></a></h3>
+  <dl>
+   <dt id="biblio-rfc2119">[RFC2119]
+   <dd>S. Bradner. <a href="https://tools.ietf.org/html/rfc2119">Key words for use in RFCs to Indicate Requirement Levels</a>. March 1997. Best Current Practice. URL: <a href="https://tools.ietf.org/html/rfc2119">https://tools.ietf.org/html/rfc2119</a>
+   <dt id="biblio-webidl">[webIDL]
+   <dd><a href="http://heycam.github.io/webidl">Web IDL</a>. Editor's Draft. URL: <a href="http://heycam.github.io/webidl">http://heycam.github.io/webidl</a>
+  </dl>
