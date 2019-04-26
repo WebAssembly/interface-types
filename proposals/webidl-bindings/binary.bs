@@ -63,7 +63,7 @@ that all occurrences of a given argument variable must have the same value.
 For example, in the production:
 
 ```
-NullableType => <NL> Type
+NullableType => 0x6a Type
 ```
 the term `Type` refers to the non terminal `Type`.
 </div>
@@ -217,7 +217,7 @@ DictionaryDef => 0x03 String Type u32(F) DictionaryMember{F}
 
 DictionaryMember => WriteableDictionaryMember
 DictionaryMember => ReadOnlyDictionaryMember
-DictionaryMember => <AT> String DictionaryMember
+DictionaryMember => 0x5a String DictionaryMember
 
 WriteableDictionaryMember => 0x01 String Type
 ReadOnlyDictionaryMember => 0x02 String Type
@@ -250,7 +250,7 @@ regular operations and attributes.
 
 ```
 NameSpaceMember => 0x02 String Type
-NameSpaceMember => <AT> String NameSpaceMember
+NameSpaceMember => 0x5a String NameSpaceMember
 ```
 
 Note: all elemements of a `NameSpace` are read-only in nature.
@@ -406,56 +406,53 @@ DOMString {#dom-string-type}
 ---------
 
 ```
-DOMStringType => <DS>
+DOMStringType => 0x72
 ```
 
 ByteString {#byte-string-type}
 ----------
 
 ```
-ByteStringType => <BS>
+ByteStringType => 0x71
 ```
 
 USVString {#usv-string-type}
 ---------
 
 ```
-USVStringType => <US>
+USVStringType => 0x70
 ```
 
 Object {#object-type}
 ------
 
 ```
-ObjectType => <OB>
+ObjectType => 0x6f
 ```
 
 Symbol {#symbol-type}
 ------
 
 ```
-SymbolType => <SY>
+SymbolType => 0x6e
 ```
 
 Error {#error-type}
 -----
 
 ```
-ErrorType => <ER>
+ErrorType => 0x6d
 ```
 
 
 Type Combinations {#type-combinations}
 =================
 
-Type combinations include various forms of parameterized type and
-functions.
+Type combinations include various forms of parameterized types and function
+types.
 
 Parameterized Type {#parameterized-type}
 ------------
-
-Note that the concept of a parameterized type is not a standard part of web IDL;
-although webIDL has many parameterized types in its specification.
 
 ```
 ParameterizedType => NullableType
@@ -471,38 +468,44 @@ parameterized in one type argument; although, often, there are additional
 restrictions on the possible instantiations of the parameterized type that are
 not reflected in this specification.
 
-A type expression intended to denote `Promise(long)` would be encoded:
+
+<div class="example">
+For example, the type expression `Promise(long)` would be encoded:
 
 ```
-PromiseType => <Pt> 0x7a
+0x68 0x7a
 ```
+</div>
+
+Note that even though there are many parameterized types in its specification,
+the concept of a parameterized type is not a standard part of web IDL.
 
 Nullable Type {#nullable-type}
 -------------
 
 ```
-NullableType => <NL> Type
+NullableType => 0x6a Type
 ```
 
 Sequence Type {#sequence-type}
 -------------
 
 ```
-SequenceType => <SQ> Type
+SequenceType => 0x69 Type
 ```
 
 Promise Type {#promise-type}
 ------------
 
 ```
-PromiseType => <PO> Type
+PromiseType => 0x68 Type
 ```
 
 Record Type {#record-type}
 -----------
 
 ```
-RecordType => <RC> Type Type
+RecordType => 0x67 Type Type
 ```
 The first type in the vector of type arguments is the type of keys in the record
 and the second is the type of values in the record.
@@ -521,7 +524,7 @@ FrozenArray Type {#frozen-array-type}
 -----------------
 
 ```
-FrozenArrayType => <FZ> Type
+FrozenArrayType => 0x66 Type
 ```
 
 Buffer Source Types {#buffer-source-types}
@@ -545,70 +548,70 @@ ArrayBuffer Type {#arraybuffer-type}
 -----------------
 
 ```
-ArrayBufferType => <AB>
+ArrayBufferType => 0x65
 ```
 
 DataView Type {#dataview-type}
 -----------------
 
 ```
-DataViewType => <DV>
+DataViewType => 0x64
 ```
 
 Int8Array Type {#int8array-type}
 --------------
 
 ```
-Int8ArrayType => <I8>
+Int8ArrayType => 0x63
 ```
 
 Int16Array Type {#int16array-type}
 --------------
 
 ```
-Int16ArrayType => <I6>
+Int16ArrayType => 0x62
 ```
 
 Int32Array Type {#int32array-type}
 --------------
 
 ```
-Int32ArrayType => <I3>
+Int32ArrayType => 0x61
 ```
 
 Uint8Array Type {#uint8array-type}
 --------------
 
 ```
-Uint8ArrayType => <U8>
+Uint8ArrayType => 0x60
 ```
 
 Uint16Array Type {#uint16array-type}
 --------------
 
 ```
-Uint16ArrayType => <U6>
+Uint16ArrayType => 0x5f
 ```
 
 Uint32Array Type {#uint32array-type}
 --------------
 
 ```
-Uint32ArrayType => <U3>
+Uint32ArrayType => 0x5e
 ```
 
 Float32Array Type {#float32array-type}
 --------------
 
 ```
-Float32ArrayType => <FA>
+Float32ArrayType => 0x5d
 ```
 
 Float64Array Type {#float64array-type}
 --------------
 
 ```
-Float64ArrayType => <DA>
+Float64ArrayType => 0x5c
 ```
 
 
@@ -625,14 +628,14 @@ Union Type {#union-type}
 ----------
 
 ```
-UnionType => <UN> u32(C) Type{C}
+UnionType => 0x5b u32(C) Type{C}
 ```
 
 Annotated Types {#annotated-types}
 --------------
 
 ```
-AnnotatedType => <AT> String Type
+AnnotatedType => 0x5a String Type
 ```
 
 In this encoding, annotations are not parsed out. A future extension/revision
@@ -663,7 +666,7 @@ InterfaceMember => MaplikeMember
 InterfaceMember => SetlikeMember
 InterfaceMember => AnnotatedInterfaceMember
 
-AnnotatedInterfaceMember => <AT> String InterfaceMember
+AnnotatedInterfaceMember => 0x5a String InterfaceMember
 ```
 
 Constant Member {#constant-member}
@@ -745,7 +748,7 @@ Annotated Member {#annotated-member}
 
 
 ```
-AnnotatedMember => <AT> String InterfaceMember
+AnnotatedMember => 0x5a String InterfaceMember
 ```
 
 
@@ -771,7 +774,7 @@ interface Paint { };
 This empty interface is encoded:
 
 ```
-<AT> 0x0e E x p o s e d = W i n d o w
+0x5a 0x0e E x p o s e d = W i n d o w
   0x02 0x05 P a i n t 0x7f 0x00
 ```
 
@@ -790,7 +793,7 @@ interface SolidColor : Paint {
 The elements of this interface are `double` values:
 
 ```
-<AT> 0x0e E x p o s e d = W i n d o w
+0x5a 0x0e E x p o s e d = W i n d o w
   0x02 0x0a S o l i d C o l o r 0x71 0x05 P a i n t 0x03
     0x02 0x03 r e d 0x74
     0x02 0x05 g r e e n 0x74
@@ -805,9 +808,9 @@ interface Pattern : Paint {
 </pre>
 
 ```
-<AT> 0x0e E x p o s e d = W i n d o w
+0x5a 0x0e E x p o s e d = W i n d o w
   0x02 0x07 P a t t e r n 0x71 0x05 P a i n t 0x01
-    0x02 0x08 i m a g e U R L <DS>
+    0x02 0x08 i m a g e U R L 0x72
 ```
 
 
@@ -825,7 +828,7 @@ interface GraphicalWindow {
 </pre>
 
 ```
-<AT> 0x0e E x p o s e d = W i n d o w
+0x5a 0x0e E x p o s e d = W i n d o w
   0x02 0x0f G r a p h i c a l W i n d o w 0x7f 0x05
     0x02 0x05 w i d t h 0x74
     0x02 0x06 h e i g h t 0x74
@@ -835,6 +838,6 @@ interface GraphicalWindow {
     0x02 0x0d d r a w R e c t a n g l e
       0x60 0x04 0x74 0x74 0x74 0x74 0x00
     0x02 0x08 d r a w T e x t
-      0x60 0x03 0x74 0x74 <DS>
+      0x60 0x03 0x74 0x74 0x72
 ```
 
