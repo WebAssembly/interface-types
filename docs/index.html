@@ -481,12 +481,12 @@ the element in the array of all top-level elements.</p>
    <p>A <code>TypeDef</code> is a way of giving a name to a type:</p>
 <pre>TypeDef => 0x01 String Type
 </pre>
-   <div class="example" id="example-7be32b7c">
-    <a class="self-link" href="#example-7be32b7c"></a> For example, the webIDL type definition: 
+   <div class="example" id="example-faca78bf">
+    <a class="self-link" href="#example-faca78bf"></a> For example, the webIDL type definition: 
 <pre class="highlight"><c- b>typedef</c-> <c- b>sequence</c->&lt;<c- b>long</c->> <c- g>rows</c->;
 </pre>
     <p>is represented using</p>
-<pre>0x01 0x04 r o w s 0x7x 0x01 0x7y
+<pre>0x01 0x04 r o w s 0x69 0x7a
 </pre>
    </div>
    <h3 class="heading settled" data-level="3.3" id="interface-def"><span class="secno">3.3. </span><span class="content">InterfaceDef</span><a class="self-link" href="#interface-def"></a></h3>
@@ -618,8 +618,8 @@ StringType => SymbolType
 <pre>ErrorType => 0x6d
 </pre>
    <h2 class="heading settled" data-level="7" id="type-combinations"><span class="secno">7. </span><span class="content">Type Combinations</span><a class="self-link" href="#type-combinations"></a></h2>
-   <p>Type combinations include various forms of parameterized type and
-functions.</p>
+   <p>Type combinations include various forms of parameterized types and function
+types.</p>
    <h3 class="heading settled" data-level="7.1" id="parameterized-type"><span class="secno">7.1. </span><span class="content">Parameterized Type</span><a class="self-link" href="#parameterized-type"></a></h3>
 <pre>ParameterizedType => NullableType
 ParameterizedType => SequenceType
