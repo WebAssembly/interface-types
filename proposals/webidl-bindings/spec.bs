@@ -25,7 +25,7 @@ Markup Shorthands: markdown yes
     "title" : "Web IDL",
     "publisher" : "W3C",
     "status" : "Editor's Draft"
-  }
+  },
   "webIDLBinary" : {
     "href" : "http://heycam.github.io/wasm-webidl-1",
     "title" : "Binary Representation of Web IDL",
@@ -39,7 +39,7 @@ Introduction {#intro}
 =====================
 
 This specification describes the format and semantics of a WebAssembly embedder
-specification [[!WEBASSEMBLY/custom section]] called "webIDL-binding".
+specification [[!WEBASSEMBLY]] called "`webIDL-binding`".
 
 This specification allows an embedder to efficiently map imports exposed by the
 WebAssembly module to functions whose implementations are known by the host.
@@ -59,8 +59,57 @@ of the `webIDL-binding` custom section.
 WebIDL Binding Custom Section {#custom-section}
 ============================
 
+Source Tuple {#source-tuple}
+----------
+
+For any given call to an imported function, the vector of arguments to that call
+represents the *source tuple* in the following descriptions.
+
+Each element of the source tuple represents an argument that the calling code is passing to the imported function.
+
+Elements of the source tuple are numerically indexed, with index `0`
+representing the first argument passed to the imported function.
+
+Target Tuple {#target-tuple}
+------
+
+For any given call to an imported function, the vector of arguments of the
+corresponding webIDL function call represent the *target tuple* of the call.
+
+Binding Expression {#binding-expression}
+----------
+
+A *binding expression* is a specification of an element of the target tuple in
+terms of elements of the source tuple.
+
+Binding expressions take the form of an expression where the operator is one of
+a fixed set of operators and the argument(s) are either constant literals or
+elements of the source tuple.
+
+
 Binding Map {#binding-map}
 -----------
+
+The *binding map* represents how elements of the source tuple are transformed
+into elements of the target tuple.
+
+The binding map itself is a tuple of *binding expressions*; each of which
+declares how one or more elements of the target tuple are determined by elements
+of the source tuple.
+
+A binding of an imported function to a webIDL specification is considered
+complete iff every argument of the target tuple is specified by exactly one
+element of the binding map.
+
+Note that, in general, the number of elements in the source tuple may not be the
+same as the number of elements in the target tuple. Furthermore, not every
+element of the source tuple need be referenced in the binding map. Nor is it
+required that the ordering of arguments in the source tuple matches the ordering
+in the target tuple.
+
+It is also possible for a given element of the source tuple to be mentioned
+multiple times in the binding map.
+
 
 WebIDL Types {#webIDL-types}
 ------------
