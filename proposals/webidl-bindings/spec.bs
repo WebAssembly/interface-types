@@ -59,6 +59,26 @@ of the `webIDL-binding` custom section.
 WebIDL Binding Custom Section {#custom-section}
 ============================
 
+The webIDL custom section is split into a number of subsections:
+
+<table id='subsections'>
+<tr>
+<th>Subsection</th>
+<th>Purpose</th>
+</tr>
+<tr>
+<td>webIDL Element</td>
+<td>Specification of webIDL top-level elements</td>
+</tr>
+<tr>
+<td>Binding Spec</td>
+<td>Specification of how imported functions are realized as webIDL</td>
+</tr>
+<caption>Subsections of webIDL custom section</caption>
+</table>
+
+
+
 Source Tuple {#source-tuple}
 ----------
 
