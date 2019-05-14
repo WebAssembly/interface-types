@@ -254,6 +254,13 @@ host implementation of `addContact`:
 
 ## Function Bindings
 
+Function bindings are defined in the **Web IDL Function Binding Subsection** of
+the **Web IDL Bindings Custom Section**. The **Web IDL Type Subsection**, if
+any, must precede the **Web IDL Function Binding Subsection**. Together, the
+**Web IDL Function Binding Subsection** and the optional **Web IDL Type
+Subsection** make up the **Web IDL Bindings Custom Section** (although there may
+be additional subsections introduced in the future).
+
 To bind an *entire function*, there are five ingredients:
 * a bit indicating "import" or "export"
 * a WebAssembly [`functype`]  (defined by the WebAssembly [Type Section])
