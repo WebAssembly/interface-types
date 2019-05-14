@@ -1,7 +1,7 @@
 # Web IDL Bindings Proposal
 
 The proposal describes adding a new mechanism to WebAssembly for reliably
-avoiding unnecessary overhead when calling, or being called, through a 
+avoiding unnecessary overhead when calling, or being called, through a
 [Web IDL] interface.  Not all host environments have Web IDL nor are all host APIs
 describable by Web IDL, so this feature is not proposed as part of the core
 WebAssembly specification, but rather a new [Embedder Specification], layered
@@ -67,7 +67,7 @@ given Web IDL signature.  This is important for several reasons:
   possible if, e.g., a string always had to be passed via an `i32` offset
   into linear memory.
 * Even with the WebAssembly MVP's set of types, there can be multiple ways to
-  produce a given Web IDL value (e.g., null-terminated vs. explicit length 
+  produce a given Web IDL value (e.g., null-terminated vs. explicit length
   vs. `anyref` for a string).
 
 The set of features described in this proposal is likely too large for an
