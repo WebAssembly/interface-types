@@ -311,8 +311,8 @@ Lastly, we need the WebAssembly function import statement (that is called by the
 (@webidl bind $addContact $addContactBinding)
 ```
 
-The `webidl-bind` statement is necessary because a single binding can be used
-multiple times, for both exports and the `bind` operators described above.
+The `(@webidl bind ...)` statement is necessary because a single binding can be
+used multiple times, for both exports and the `bind` operators described above.
 
 The whole bound call path can be visualized:
 
