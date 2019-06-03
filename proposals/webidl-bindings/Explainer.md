@@ -46,7 +46,7 @@ imports and exports that specify how to create a Web IDL function from a
 WebAssembly function and vice versa.
 
 An import binding describes how to create a WebAssembly [host function instance][`hostfunc`]
-instance from a Web IDL function by specifying:
+from a Web IDL function by specifying:
 * the Web IDL function signature, including parameter and result types and
   whether the Web IDL function is a static (the current default), method (with
   an additional `this` parameter) or constructor (with an additional `newTarget`
