@@ -260,7 +260,7 @@ represent human readable expressions. This variant -- called W-Expressions --
 has four different bracketing operators -- `()`, `[]`, `{}` and `<>`. These
 bracketing operators are distinct from one another but are otherwise equivalent.
 
-Similarly, the 'splat' operator -- written as a prefix `^` -- whose role is to unpack an S-Expression into a sequence of elements. For example, 
+Similarly, the 'splat' operator -- written as a prefix `^` -- whose role is to unpack a W-Expression into a sequence of elements. For example, 
 
 ```
 (1 2 3 4) == (1 ^(2 3) 4)

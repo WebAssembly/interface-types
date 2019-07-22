@@ -100,13 +100,13 @@ operators. The type of this lambda is a WASM function type.
 For example, the lambda:
 
 ```
-(access ($B $L) ($integer-to-i32 (utf8-count (base-len-as-utf8 $B $L))))
+(access ($B $L) ($integer-to-i32 (utf8-count (base-len-as-string $B $L))))
 ```
 
 denotes an access lambda that accesses a function utf8-count (which presumably counts the number of unicode code points in a string). The sub-expression
 
 ```
-(base-len-as-utf8 $B $L)
+(base-len-as-string $B $L)
 ```
 
 represents a coercion expression that maps a string represented as a base
@@ -236,8 +236,8 @@ provisioning lambda that supports it:
       ($_cp_count ^ (string-to-base-ptr T $Buffer $Size))))
 ```
 
-Note that the string-to-base operator returns a two-tuple: the address in memory
-of where the string data is and the size, in bytes, of the resulting
+Note that the string-to-base-ptr operator returns a two-tuple: the address in
+memory of where the string data is and the size, in bytes, of the resulting
 string. This tuple is unpacked into two values -- using the `^` operator --
 which are used as two arguments to the `$_cp_count` principal function call.
 </div>
@@ -383,7 +383,7 @@ The import, together with the bindings looks like:
   ...
   (import-binding "unicode-lib" "codePointCount"
     (access ($Base $Len) (integer-to-i32 
-      (codePointCount (base-len-as-utf8 $Base $Len)))))
+      (codePointCount (base-len-as-string $Base $Len)))))
   ...
 )
 ```
@@ -428,3 +428,81 @@ may resemble:
 ```
 
 </div>
+
+## Coercion Operators
+
+The coercion operators are used to lift webAssembly values into wi-IDL values
+and vice versa.
+
+The general form of a coercion operator takes the form of a function call; but as
+previously noted, coercion operators are not conventional functions.
+
+### Lifting Operators
+
+#### i32-as-integer
+
+The `i32-as-integer` operator maps a webAssembly `i32` value into the wi-IDL
+space of `Integer`. 
+
+Note that this does not necessarily imply any _transformation_ of the bits
+representing the integer value.
+
+```
+i32-as-integer : (i32) => Integer
+```
+
+#### base-len-as-string
+
+The `base-len-as-string` operator maps a utf8 encoded sequence of bytes into the wi-IDL space of `String`
+
+```
+base-len-as-string: (i32 i32) => String
+```
+
+### Lowering Operators
+
+Lowering operators are the complement of the lifting operators; generally they
+are used to map values in the wi-IDL space into the webAssembly space.
+
+#### integer-to-i32
+
+The `integer-to-i32` operator maps a wi-IDL `Integer` value into the webAssembly
+space of 32-bit integers.
+
+```
+Integer-to-i32 : (Integer) -> i32
+```
+
+Note that this operator _may_ involve a _truncation_ of values if the original
+source of the `Integer` value had a higher precision than 32 bits.
+
+In particular, the identity
+
+```
+(integer-to-i32 (i32-as-integer X)) == X
+```
+is satisfied, whereas the identity
+
+```
+(integer-to-i32 (i64-as-integer X)) == X
+```
+is not, in general.
+
+#### string-to-base-ptr
+
+The `string-to-base-ptr` maps a wi-IDL `String` value into a block of webAssembly linear memory -- as a sequence of utf-8 encoded bytes.
+
+```
+(string-to-base-ptr : (String i32 i32) => (i32 i32) $throws i32 
+```
+
+The three arguments to `string-to-base-ptr` are the `String` value itself, the
+base address of a block of linear memory -- together with the size of the
+buffer. The returned result is the address of the utf8-encoded sequence of bytes
+together with its length -- as a 2-tuple.
+
+Note that although in many cases the returned address of the string may be
+within the allocation buffer, it is not guaranteed. If the corresponding lifting
+operator were a `base-len-as-string` operator that was accessing the same linear
+memory then it is possible that no copying actually takes place.
+
