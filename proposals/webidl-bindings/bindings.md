@@ -451,6 +451,18 @@ representing the integer value.
 i32-as-integer : (i32) => Integer
 ```
 
+#### i64-as-integer
+
+The `i64-as-integer` operator maps a webAssembly `i64` value into the wi-IDL
+space of `Integer`. 
+
+Note that this does not necessarily imply any _transformation_ of the bits
+representing the integer value.
+
+```
+i64-as-integer : (i64) => Integer
+```
+
 #### base-len-as-string
 
 The `base-len-as-string` operator maps a utf8 encoded sequence of bytes into the wi-IDL space of `String`
@@ -488,12 +500,43 @@ is satisfied, whereas the identity
 ```
 is not, in general.
 
+#### integer-to-i64
+
+The `integer-to-i64` operator maps a wi-IDL `Integer` value into the webAssembly
+space of 64-bit integers.
+
+```
+Integer-to-i64 : (Integer) -> i64
+```
+
+Note that this operator _may_ involve a _truncation_ of values if the original
+source of the `Integer` value had a higher precision than 64 bits.
+
+Note that this operator _may_ involve _sign extension_ if the original `Integer`
+source had less than 64 bits of precision.
+
+#### unsigned-integer-to-i64
+
+The `unsigned-integer-to-i64` operator maps a wi-IDL `Integer` value into the webAssembly
+space of 64-bit integers.
+
+```
+unsigned-integer-to-i64 : (Integer) -> i64
+```
+
+Note that this operator _may_ involve a _truncation_ of values if the original
+source of the `Integer` value had a higher precision than 64 bits.
+
+If the original `Integer` source has _fewer_ than 64 bits of precision, then the
+output is zero-filled to the left.
+
+
 #### string-to-base-ptr
 
 The `string-to-base-ptr` maps a wi-IDL `String` value into a block of webAssembly linear memory -- as a sequence of utf-8 encoded bytes.
 
 ```
-(string-to-base-ptr : (String i32 i32) => (i32 i32) $throws i32 
+string-to-base-ptr : (String i32 i32) => (i32 i32) $throws i32 
 ```
 
 The three arguments to `string-to-base-ptr` are the `String` value itself, the
@@ -502,7 +545,11 @@ buffer. The returned result is the address of the utf8-encoded sequence of bytes
 together with its length -- as a 2-tuple.
 
 Note that although in many cases the returned address of the string may be
-within the allocation buffer, it is not guaranteed. If the corresponding lifting
-operator were a `base-len-as-string` operator that was accessing the same linear
-memory then it is possible that no copying actually takes place.
+within the allocation buffer, it is not guaranteed. For example, if the
+corresponding lifting operator were a `base-len-as-string` operator that was
+accessing the same linear memory then it is possible that no copying actually
+takes place.
+
+>Question: Should an exception be thrown anyway if the length of the string is
+>larger than that allocated for, even if the allocation buffer is not used?
 

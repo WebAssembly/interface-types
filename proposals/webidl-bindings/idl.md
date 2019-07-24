@@ -1,10 +1,10 @@
-# Web Interoperability Interface Definition Language {#snowman}
+# Web Interoperability Interface Definition Language
 
 This specification defines an abstract schema to support a limited form of
 interoperability between WebAssembly modules and between WebAssembly modules and
 a host environment.
 
-## Introduction & Motivating Principles {#Introduction}
+## Introduction & Motivating Principles
 
 This design is intended to support interoperating between systems that do not
 necessarily share a common memory or common implementation language. As such the
@@ -15,7 +15,7 @@ function and interface that we expect to be universally applicable in gross form
 possible interactions between systems; only those that are most likely to be
 ‘smooth’.
 
-### Ownership Boundaries {#ownership}
+### Ownership Boundaries
 
 One of the purposes of an IDL of any description is to facilitate access to code
 that is ‘foreign’ in some sense. This can be characterized in terms of ownership
@@ -33,7 +33,7 @@ sequences can be created. This disitnction between allowing sequences to
 transmitted but not necessarily processed is a typical manifestation of the
 ownership boundary.
 
-### Resources {#resources}
+### Resources
 
 Why do we use other people’s code? It is not normally to perform a calculation
 that we could do ourselves. A more common scenario is to access a resource that
@@ -48,7 +48,7 @@ resources that other parties may reference in operations without being able to
 The wi-IDL models resources as a standard generic type -- `Resource<T>` -- which
 is used to denote a handle to a shared resource of type `T`.
 
-### Language Neutrality {#language-neutrality}
+### Language Neutrality
 
 This specification does not attempt to solve the ‘language interoperability’
 problem in its full generality. There is evidence that suggests this problem is
@@ -59,11 +59,11 @@ primarily by strongly limiting the expressive power of the schema.
 
 Thus we do not favor any particular style of language - functional vs object
 oriented vs procedural; nor do we favor particular memory strategies - managed
-memory vs manual memory. On the other hand, this also means that we do not
-support many common usage patterns - such as shared memory access to data
-structures.
+memory vs manually managed linear memory. On the other hand, this also means
+that we do not support many common usage patterns - such as shared memory access
+to data structures.
 
-## Interoperability Strategy {#strategy}
+## Interoperability Strategy
 
 Interoperability between providers and clients is supported by a two part
 strategy: an abstract schema language (wi-IDL) whose primary purpose is to
@@ -82,7 +82,7 @@ those operations.
 The two concepts are mutually recursive (sic): an interface refers to data and a
 data value may refer to entities that have interfaces around them.
 
-### Nominal vs Structural Types {#nominal-types}
+### Nominal vs Structural Types
 
 A nominal type is one whose semantics depends on a denotation: on the entities
 being denoted by the type. For example, a Person type is typically understood as
@@ -103,7 +103,7 @@ type. Operationally, the difference between a nominal type and a structural type
 is that the former is fundamentally opaque whereas a structural type is
 transparent: you can see the pieces of a structural type.
 
-### Algebraic Types {#algebraic-types}
+### Algebraic Types
 
 An algebraic type is one whose values are defined by composition of two
 fundamental operators: tupling and union. Algebraic types are important as a way
@@ -111,7 +111,7 @@ of expressing alternate forms of data; two examples being enumerations (such as
 boolean) and alternate representations of a point (in terms of cartesian or
 polar coordinates).
 
-### Type Quantification {#type-quantification}
+### Type Quantification
 
 A quantified type is a way of denoting an arbitrary number of types -- in the
 case of universal quantifiers an infinite number and in the case of existential
@@ -127,7 +127,7 @@ of Lists and Maps; and they can be used to model certain ‘user-defined’ type
 such as a Permission type which might need to have the type of permission
 ‘plugged in’.
 
-### Type Equality {#type-equality}
+### Type Equality
 
 Compatibility between types is defined to be based on equality. In particular,
 subtyping is not supported by this schema.
@@ -137,7 +137,7 @@ validation; furthermore, when combined with binding expressions whose task it is
 to raise or lower values to meet the type signature of an operation, subtyping
 is unnecessary.
 
-### Collections {#collections}
+### Collections
 
 The two standard collection types in this schema are the sequence and the
 map. This allows complex data -- such as a sequence of points each of which is
@@ -150,7 +150,7 @@ for example, there is no notation for accessing an element of a map.
 The effect is that compound data values may be exchanged as part of an operation
 but the values themselves may not be edited in any way.
 
-### Representing Values {#representing-values}
+### Representing Values
 
 In addition to representing interfaces and types, it is also useful and
 necessary to be able to represent the values that are communicated across
@@ -205,7 +205,7 @@ denotes an arbitrary sequence of occurrences of `TNT`, separated by `Op`. For
 example, the rule:
 
 ```
-VariantType => Name Type '|' .. '|' Name Type
+AlgebraicSpec => Name Type '|' .. '|' Name Type
 ```
 matches examples such as:
 
@@ -273,9 +273,10 @@ even though,
 ```
 
 >Note: The reason for having four different bracketing operators is to support
->readability without requiring complex parsing.
+>readability without requiring complex parsing. This may be adjusted in the
+>future.
 
-## Wi-IDL Schema {#schema}
+## wi-IDL Schema
 
 The wi-IDL schema language is a language for describing types.
 
@@ -291,13 +292,12 @@ Type => FunctionType
 Type => QuantifiedType
 Type => TypeInterface
 Type => TupleType
-Type => VariantType
 Type => NominalType
 ```
 
-### Function Type {#function-type}
+### Function Type
 
-A function type denotes the types of functions. 
+A function type denotes the types of functions.
 
 ```
 FunctionType => TupleType '=>' Type
@@ -326,8 +326,8 @@ being a _TupleType_.
 >a tuple. In particular, so-called void functions are assumed to return the
 >empty tuple.
 
-A function that may raise an exception can declare it with a throws clause in
-the type:
+A function that may raise an exception can declare it with a `throws` clause in
+its type signature:
 
 ```
 FunctionType => TupleType '=>' Type 'throws' Type
@@ -374,7 +374,7 @@ is equivalent to
 all X . all Y . (X Y)
 ```
 
-There are two forms of TypeVar, corresponding to whether the type variable
+There are two forms of _TypeVar_, corresponding to whether the type variable
 denotes a type or a type function:
 
 ```
@@ -407,7 +407,7 @@ TypeInterface => '{' Signature ..  Signature '}'
 W-TypeInterface ::= '{' W-Signature .. W-Signature '}'
 ```
 
-There are two forms of Signature; one denotes the type of a field: i.e., it’s an
+There are two forms of _Signature_; one denotes the type of a field: i.e., it’s an
 association of a type to a name:
 
 ```
@@ -418,7 +418,7 @@ Signature => Name ':' Type
 W-Signature ::= '(' W-Identifier W-Type ')'
 ```
 
-The second form of TypeSignature denotes a nominal type, either implicitly:
+The second form of _Signature_ denotes a nominal type:
 
 ```
 Signature => 'type' NominalType
@@ -428,25 +428,63 @@ Signature => 'type' NominalType
 W-Signature ::= '(' 'type' W-NominalType ')'
 ```
 
-This form is used to identify so-called type imports. It is also used to
-identify nominal types; in which case it may be associated with an algebraic
-type combination:
+This form is used to identify so-called type imports. 
+
+Signatures are also used to identify nominal types; in which case it may be
+associated with an algebraic type combination:
 
 ```
-Signature => 'type' NominalType '=' Type
-Signature => 'all' TypeVar .. TypeVar '.' NominalType '=' Type
+Signature => 'type' NominalType '=' AlgebraicSpec
+Signature => 'all' TypeVar .. TypeVar '.' NominalType '=' AlgebraicSpec
 ```
 
 ```
-W-Signature ::= '(' 'type' W-NominalType W-Type ')'
-W-Signature ::= '(' 'type' '(' 'all' '(' TypeVar .. TypeVar ')' W-NominalType W-Type ')' ')'
+W-Signature ::= '(' 'type' W-NominalType W-AlgebraicSpec ')'
+W-Signature ::= '(' 'type' '(' 'all' '(' W-TypeVar .. W-TypeVar ')' W-NominalType W-AlgebraicSpec ')' ')'
 ```
 
 For example, the standard `Option/1` type can be defined as the _Signature_:
 
 ```
-( type (all (t) <Option t> [cases none (some t)]))
+(type (all t <Option t> [none (some t)]))
 ```
+
+#### Algebraic Specification
+
+An _AlgebraicSpec_ is a specification of the possible values of a type. This
+most closely mirrors the concept of _discriminated union_. An _AlgebraicSpec_
+consists of a collection of alternate forms of a type; each of which is labeled
+by a discriminator.
+
+```
+AlgebraicSpec => Name Type '|' .. '|' Name Type
+```
+
+If the _Type_ is the empty tuple then it may be omitted -- this corresponds to
+the concept of enumeration types.
+
+```
+W-AlgebraicSpec ::= '[' W-Variant .. W-Variant ']'
+W-Variant ::= W-Identifier | '(' W-Identifier W-Type ')'
+```
+
+<div class="example">
+The legal values for standard Boolean type may be defined as an enumeration:
+
+```
+True | False
+```
+which can be elaborated into a full _Signature_ for the `Boolean` type:
+
+```
+type Boolean = True | False
+```
+
+</div>
+
+>If the _Type_ associated with one of the arms of an _AlgebraicSpec_ is a
+>_TypeInterface_ then the variant counts as the description of a record type; if
+>the _Type_ is a _TupleType_ then the variant counts as a form of labeled tuple.
 
 #### Tuple Type {#tuple-type}
 
@@ -467,7 +505,7 @@ unary tuple and the zero-ary tuple.
 A unary tuple type, such as
 
 ```
-(integer)
+(Integer)
 ```
 
 is _not_ equivalent to its element type.
@@ -482,35 +520,6 @@ is used to designate void.
 >NOTE: Due to the ubiquity of tuples, the W-Expression form of a tuple type has
 >a special status: it is not marked with a special keyword as the first element
 >of its written form.
-
-#### Variant Type {#type-union}
-
-
-A variant type -- sometimes called a discriminated union -- is a collection of
-alternate forms of type; each of which is labeled by a discriminator.
-
-```
-VariantType => Name Type '|' .. '|' Name Type
-```
-
-If the Type is the empty tuple then it may be omitted.
-
-```
-W-VariantType ::= '[' 'cases' W-Variant .. W-Variant ']'
-W-Variant ::= W-Identifier | '(' W-Identifier W-Type ')'
-```
-
-<div class="example">
-The legal values for standard Boolean type may be defined as a VariantType:
-
-```
-[cases True False]
-```
-</div>
-
-If the Type is a TypInterface then the variant counts as the description of a
-record type; if the Type is a TupleType then the variant counts as a form of
-labeled tuple.
 
 #### Nominal Type {#nominal-type}
 
@@ -550,7 +559,7 @@ signature:
 
 <div class="example">
 ```
-(type Boolean [cases true false])
+(type Boolean [true false])
 ```
 </div>
 
@@ -583,7 +592,7 @@ The `Option/1` type is used to denote optional or nullable values. Although a st
 
 <div class="example">
 ```
-(type (all (t) <Option t> [cases none (some t)]))
+(type (all (t) <Option t> [none (some t)]))
 ```
 </div>
 
@@ -666,11 +675,14 @@ W-Field ::= '(' W-Identifier W-Value ')'
 
 The type of a record is a _TypeInterface_; where the named elements of the record correspond to named elements of the _TypeInterface_.
 
+>Note: a future version of this specification may include the ability to include
+>type signatures to a record; signifying locally introduced types.
+
 ### Variants
 
-Where a value is one of a set of variants -- as defined by a _VariantType_ --
-the value is written as the appropriate label followed by a tuple of argument
-terms. If the argument tuple is empty it is omitted.
+Where a value is one of a set of variants -- as defined by a _AlgebraicSpec_ --
+the value is written as the appropriate label followed by its argument type. If
+the argument type is the empty tuple then it may be omitted.
 
 ```
 VariantTerm => Name Tuple
@@ -732,8 +744,222 @@ Mantissae => Digit .. Digit '.' Digit .. Digit
 Exponent => 'e' Integer
 ```
 
->Note: may need to extend this to permit inifities and explicit NaN values.
+>Note: may need to extend this to permit infinities and explicit NaN values.
 
 ## Binary Encoding {#bindary-encoding}
 
-This section describes a binary encoding of wi-IDL.
+This section describes the binary encoding of wi-IDL.
+
+### Notation
+
+The binary encoding is presented in the form of productions of the form:
+
+```
+NT(Arg) => Body
+```
+
+where *Body* is a sequence of terminals and non-terminals.
+
+The terminals are either single characters (ASCII) or byte codes -- represented
+as hex sequences.
+
+A Non Terminal is represented as a name enclosed in angle brackets followed
+optionally by an argument in parentheses and/or a repeat count -- a number or
+argument enclosed in braces.
+
+Multiple productions may be applicable to a given non-terminal; these are
+represented as multiple rules.
+
+Non terminals may have argument expressions, the constraint on the production is
+that all occurrences of a given argument variable must have the same value.
+
+<div class="example">
+For example, in the production:
+
+```
+FunctionType => 0xft TupleType Type
+```
+the term `Type` refers to the non terminal `Type`.
+</div>
+
+<div class="example">
+Similary, the production:
+```
+String => u32(C) CodePoint{C}
+```
+
+denotes the fact that a `String` is represented by a count `C` -- which
+satisfies the `u32` non-terminal -- followed by `C` CodePoints.
+</div>
+
+For convenience, in the presentation, where a literal string is required in the
+encoding it is listed using the string's characters spaced out.
+
+<div class="example">
+For example, the encoding:
+
+```
+0x06 S t r i n g
+```
+is a convenience form of the sequence of bytes:
+
+```
+0x06 0x53 0x74 0x72 0x69 0x6e 0x67
+```
+</div>
+
+Note: all of the type names defined in this document use only ASCII characters
+in their name.
+
+Where a terminal or non-terminal is repeated, its argument may take the form of
+_Identifier*_. For example, in
+
+<div class="example">
+
+```
+TupleType(T*) => 0xtt u32(C) Type{C}(T*)
+```
+
+the _Type_ non terminal has both a count and an argument expression. In this
+case, the argument _T_ refers to the argument of the _Type_ non-terminal, and
+_T*_ refers to the vector of occurrences of _Type_.
+
+### Standard Scheme
+
+All of the encodings follow a common scheme, consisting of a single lead-in byte
+followed by type specific content. Any collections are preceded by a length
+(encoded as an LEB) so that a streaming parser knows exactly how much input to
+consume.
+
+#### Encoding Integers
+
+Apart from representing integer values themselves, the encoding of other
+elements of the IDL also requires the representation of integers; for example,
+in representing a `String` value, its length is also required in the encoding.
+
+Integers are encoded using the LEB128 variable length integer encoding. Although
+the LEB format is able to represent both signed and unsigned integers, this
+specification only uses unsigned integers.
+
+```
+7bit(0) => 0x00
+7bit(1) => 0x01
+...
+7bit(127) => 0x7f
+
+8bit(0) => 0x80
+8bit(1) => 0x81
+...
+8bit(127) => 0xff
+
+u32(Ix) => 7bit(Ix)
+u32(Ix<<7+Lx) => 8bit(Lx) u32(Ix)
+```
+
+#### Encoding Vectors 
+
+A vector of entities is encoded as a length integer (itself encoded as LEB128)
+following length entries of the vector -- each of which is of the expected type.
+
+#### Encoding Strings
+
+A string is encoded as a vector of Codepoints represented as sequences of UTF8
+bytes.
+
+```
+String(C*) => u32(L) CodePoint{L}(C*)
+```
+
+### Encoding Types
+
+There are several different kinds of type represented in the encoding:
+
+```
+Type => FunctionType
+Type => TupleType
+Type => QuantifiedType
+Type => TypeInterface
+Type => NominalType
+```
+
+#### Function Type
+
+Function types come in two flavors: exception throwing or not. This is reflected
+in two encodings for function types:
+
+```
+FunctionType => 0xft TupleType Type
+FunctionType => 0xfe TupleType Type Type
+```
+
+
+#### Tuple Type
+
+A tuple type consists of a sequence of types:
+
+```
+TupleType => 0xtt i32(A) Type{A}
+```
+
+#### Quantified Type
+
+Quantified types come in two forms, universal and existential. They are used to
+introduce scoping of names.
+
+```
+QuantifiedType => UniversalType
+QuantifiedType => ExistentialType
+
+UniversalType => 0xut TypeVar Type
+ExistentialType => 0xet TypeVar Type
+
+TypeVar => 0xtv i32(ix)
+TypeVar => 0xtk i32(Ar) i32(ix)
+
+```
+
+The bound type variable in a _QuantifiedType_ may either be a simple type or it
+may be a type function variable. In the latter case, it is associated with an
+arity -- the expected number of argument types to the type function.
+
+Each type variable also has a _type index_. This is a number that identifies the
+type within the body of the quantified type. The type index should be a positive
+integer -- negative indices are reserved for standard or predefined types.
+
+#### Type Interface
+
+#### Nominal Type
+
+#### Integer Type
+
+#### Float Type
+
+#### String Type
+
+#### Boolean Type
+
+#### Sequence/1 Type
+
+#### Map/2 Type
+
+#### Reference/1 Type
+
+#### Option/1 Type
+
+### Encoding Values
+
+#### Tuple Value Encoding
+
+#### Record Value Encoding
+
+#### Variant Encoding
+
+#### Integer Encoding
+
+#### Floating Point Encoding
+
+#### String Encoding
+
+### Examples
+
+Note: This section is non-normative.
