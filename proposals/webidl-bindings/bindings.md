@@ -465,7 +465,8 @@ i64-as-integer : (i64) => Integer
 
 #### base-len-as-string
 
-The `base-len-as-string` operator maps a utf8 encoded sequence of bytes into the wi-IDL space of `String`
+The `base-len-as-string` operator maps a utf8 encoded sequence of bytes into the
+wi-IDL space of `String`
 
 ```
 base-len-as-string: (i32 i32) => String
@@ -517,8 +518,8 @@ source had less than 64 bits of precision.
 
 #### unsigned-integer-to-i64
 
-The `unsigned-integer-to-i64` operator maps a wi-IDL `Integer` value into the webAssembly
-space of 64-bit integers.
+The `unsigned-integer-to-i64` operator maps a wi-IDL `Integer` value into the
+webAssembly space of 64-bit integers.
 
 ```
 unsigned-integer-to-i64 : (Integer) -> i64
@@ -533,7 +534,8 @@ output is zero-filled to the left.
 
 #### string-to-base-ptr
 
-The `string-to-base-ptr` maps a wi-IDL `String` value into a block of webAssembly linear memory -- as a sequence of utf-8 encoded bytes.
+The `string-to-base-ptr` maps a wi-IDL `String` value into a block of
+webAssembly linear memory -- as a sequence of utf-8 encoded bytes.
 
 ```
 string-to-base-ptr : (String i32 i32) => (i32 i32) $throws i32 

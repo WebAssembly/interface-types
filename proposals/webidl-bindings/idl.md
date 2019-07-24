@@ -123,8 +123,8 @@ generic. A generic type is like a function on types: it takes a (typically one)
 type as argument and returns a new type.
 
 Generic types have two roles in this schema: they underlie the built-in concepts
-of Lists and Maps; and they can be used to model certain ‘user-defined’ types --
-such as a Permission type which might need to have the type of permission
+of Lists and Options; and they can be used to model certain ‘user-defined’ types
+-- such as a Permission type which might need to have the type of permission
 ‘plugged in’.
 
 ### Type Equality
@@ -139,13 +139,13 @@ is unnecessary.
 
 ### Collections
 
-The two standard collection types in this schema are the sequence and the
-map. This allows complex data -- such as a sequence of points each of which is
-represented as a pair of float values -- to be communicated as part of an
-operation.
+There is a single standard collection type in this schema: the sequence. This
+allows complex data -- such as a sequence of points each of which is represented
+as a pair of float values -- to be communicated as part of an operation.
 
-However, the schema itself does not include any way of manipulating collections:
-for example, there is no notation for accessing an element of a map.
+However, the schema itself does not include any way of manipulating sequences:
+for example, there is no notation for indexing into a sequence; or even knowing
+how long the sequence is.
 
 The effect is that compound data values may be exchanged as part of an operation
 but the values themselves may not be edited in any way.
@@ -574,12 +574,6 @@ encoding. This is left to the appropriate lifting and lowering operators.
 The `Sequence/1` type is used to denote sequences of values. Its type parameter
 refers to the types of elements in the sequence.
 
-### Map/2 Type {#map-type}
-
-The `Map/2` type is used to denote named associations -- key/value pairs. It has
-two type parameters: the type of the Key of the association and the type of the
-Value of the association.
-
 ### Reference/1 Type {#reference-type}
 
 The `Reference/1` type is used to denote values that are ‘passed by reference’
@@ -940,8 +934,6 @@ integer -- negative indices are reserved for standard or predefined types.
 
 #### Sequence/1 Type
 
-#### Map/2 Type
-
 #### Reference/1 Type
 
 #### Option/1 Type
@@ -959,6 +951,8 @@ integer -- negative indices are reserved for standard or predefined types.
 #### Floating Point Encoding
 
 #### String Encoding
+
+#### Encoding Sequences
 
 ### Examples
 
