@@ -744,22 +744,62 @@ Exponent => 'e' Integer
 
 This section describes the binary encoding of wi-IDL.
 
+>Note: references to bytes of the form `0xtt` are temporary and will be replaced
+>by actual values.
+
 ### Notation
 
 The binary encoding is presented in the form of productions of the form:
 
 ```
-NT(Arg) => Body
+NT => Body
 ```
 
-where *Body* is a sequence of terminals and non-terminals.
+where *Body* is a sequence of terminals and non-terminals and _NT_ is a
+non-terminal.
 
 The terminals are either single characters (ASCII) or byte codes -- represented
 as hex sequences.
 
-A Non Terminal is represented as a name enclosed in angle brackets followed
-optionally by an argument in parentheses and/or a repeat count -- a number or
-argument enclosed in braces.
+A Non Terminal is represented as a name followed optionally by an argument in
+parentheses and/or a repeat count -- a number or argument enclosed in braces. Non terminals may be optionally preceded by a scope:
+
+```
+NT => Scope Name Argument Repeat
+
+Scope => Bindings ','
+Scope =>
+
+Repeat => '{' Expression '}'
+Repeat =>
+
+Argument => '(' Expression ')'
+Argument =>
+```
+
+
+If the _scope_ is omitted in a production rule then it is assumed to be fixed
+for the rule. I.e., a rule of the form:
+
+```
+FunctionType => 0xft TupleType Type
+```
+is assumed to be equivalent to:
+
+```
+E,FunctionType => 0xft E,TupleType E,Type
+```
+for some _E_ that does not appear anywhere else.
+
+_Bindings_ is an associative mapping from integers to _Type_ or _Type Function_;
+written as:
+
+```
+Binding => Integer '->' Type
+Binding => Integer '->' Type/Integer
+
+Bindings => '{' Binding ',' .. ',' Binding '}'
+```
 
 Multiple productions may be applicable to a given non-terminal; these are
 represented as multiple rules.
@@ -779,11 +819,14 @@ the term `Type` refers to the non terminal `Type`.
 <div class="example">
 Similary, the production:
 ```
-String => u32(C) CodePoint{C}
+String(C*) => u32(L) CodePoint(C){L}
 ```
 
-denotes the fact that a `String` is represented by a count `C` -- which
-satisfies the `u32` non-terminal -- followed by `C` CodePoints.
+denotes the fact that a `String` is represented by a count `L` -- which
+satisfies the `u32` non-terminal -- followed by `L` CodePoints.
+
+The expression `C*` denotes the concatenation of all occurrences of the
+expression `C`.
 </div>
 
 For convenience, in the presentation, where a literal string is required in the
@@ -811,12 +854,12 @@ _Identifier*_. For example, in
 <div class="example">
 
 ```
-TupleType(T*) => 0xtt u32(C) Type{C}(T*)
+TupleType(T*) => 0xtt u32(C) Type(T){C}
 ```
 
 the _Type_ non terminal has both a count and an argument expression. In this
 case, the argument _T_ refers to the argument of the _Type_ non-terminal, and
-_T*_ refers to the vector of occurrences of _Type_.
+`T*` refers to the vector of occurrences of _Type_ `T`.
 
 ### Standard Scheme
 
@@ -904,11 +947,11 @@ introduce scoping of names.
 QuantifiedType => UniversalType
 QuantifiedType => ExistentialType
 
-UniversalType => 0xut TypeVar Type
+E,UniversalType => 0xut i32(Tx) TypeVar(TV) E,{Tx->TV},Type
 ExistentialType => 0xet TypeVar Type
 
-TypeVar => 0xtv i32(ix)
-TypeVar => 0xtk i32(Ar) i32(ix)
+TypeVar => 0xtv i32(Tx)
+TypeVar => 0xtk i32(Tx) i32(Ar)
 
 ```
 
@@ -923,6 +966,16 @@ integer -- negative indices are reserved for standard or predefined types.
 #### Type Interface
 
 #### Nominal Type
+
+There are two forms of nominal type: with type arguments or without. In both
+cases the primary mechanism is to use an index to refer to the definition of the
+type.
+
+```
+NominalType => 0xnv i32(Tx)
+NominalType => 0xnk i32(Tx) i32(Ar) Type(T){Ar}
+```
+
 
 #### Integer Type
 
