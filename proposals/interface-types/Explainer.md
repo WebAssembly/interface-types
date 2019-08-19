@@ -275,12 +275,13 @@ Note that the ability to call *any* function also allows reference counting
 schemes to call a decrement function, e.g., if a C++ function returned a
 `std::shared_ptr<std::string>`.
 
-> **Note** An alternative, more orthogonal design would be to use
-> stack instructions (`pick`, `swap` and `drop`) to duplicate the returned
-> `i32` pointer and then `call-export "free"` explicitly. However, proper
-> exception-handling integration will also require calling `"free"` when
-> unwinding, so ideally we'll define a solution that succinctly handles both,
-> since this will be a common case.
+> **TODO** Proper integration with exception handling will likely require
+> switching to a different scheme that is exception safe, so that an exception
+> thrown between `call "greeting_"` and `memory-to-string` *also* calls
+> `"free"`. Moreover, the call to `"free"` should happen after not just
+> `memory-to-string`, but after the `string` value is consumed by an
+> adapter instruction, so that the pair of instructions can be optimized
+> into a direct linear memory copy.
 
 ### Export receiving string
 
