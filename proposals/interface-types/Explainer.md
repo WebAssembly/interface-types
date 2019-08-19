@@ -275,11 +275,12 @@ Note that the ability to call *any* function also allows reference counting
 schemes to call a decrement function, e.g., if a C++ function returned a
 `std::shared_ptr<std::string>`.
 
-> **Note** Proper integration with exception handling will likely require
-> switching to a different scheme that is exception safe. For example,
-> responsibility to call the `free` function could be attached to a 
-> [block instruction][Control Instructions] that called `free` when exited
-> normally or unwound exceptionally.
+> **Note** An alternative, more orthogonal design would be to use
+> stack instructions (`pick`, `swap` and `drop`) to duplicate the returned
+> `i32` pointer and then `call-export "free"` explicitly. However, proper
+> exception-handling integration will also require calling `"free"` when
+> unwinding, so ideally we'll define a solution that succinctly handles both,
+> since this will be a common case.
 
 ### Export receiving string
 
