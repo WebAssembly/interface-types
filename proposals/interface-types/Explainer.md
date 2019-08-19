@@ -215,6 +215,8 @@ function. In particular:
 * Validation checks that the types of instructions' signatures line up.
 * Instructions can either be written as a linear sequence (as shown above)
   or, equivalently, as [Folded S-expressions].
+* The set of instructions is fixed by the specification, but growable over time
+  by proposing extensions to the specification.
 
 The specific adapter function shown above uses two adapter instructions:
 * The `call-export` instruction calls the `greeting_` export of the core wasm
