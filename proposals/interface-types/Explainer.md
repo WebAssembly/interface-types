@@ -46,11 +46,12 @@ dynamically-typed JavaScript values can add additional runtime overhead.
 
 With the addition of interface types, the Web IDL spec could add a
 "WebAssembly binding" section (symmetric to the current [ECMAScript binding]
-section) which defines how WebAssembly values can be converted to and
-from Web IDL values, without going through JavaScript, even for high-level
-types like `DOMString` and [Dictionary]. An optimizing engine can then compile
-the declarative, statically-typed interface adapters into efficient
-stubs that call more-directly into the API's implementation.
+section) which defines how WebAssembly values (including values of interface
+types) can be converted to and from Web IDL values, without going through
+JavaScript, even for high-level types like `DOMString` and [Dictionary]. An
+optimizing engine can then compile the declarative, statically-typed interface
+adapters into efficient stubs that call more-directly into the API's
+implementation.
 
 **Enabling "shared-nothing" linking of WebAssembly modules**
 
