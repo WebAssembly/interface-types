@@ -591,7 +591,7 @@ leverage existing and planned reference types ([`anyref`], [function references]
 [core spec]: https://webassembly.github.io/spec/core
 [Module Syntax]: https://webassembly.github.io/spec/core/syntax/modules.html#syntax-module
 [Old Module Type]: https://webassembly.github.io/spec/core/valid/modules.html#valid-module
-[New Module Type]: https://github.com/WebAssembly/meetings/blob/master/2019/CG-08-06.md#discuss-new-proposal-that-introduces-types-for-modules-and-instances-and-text-format-thereof-as-initially-discussed-in-design1289
+[New Module Type]: https://github.com/WebAssembly/module-types/blob/master/proposals/module-types/Overview.md
 [Instructions]: https://webassembly.github.io/spec/core/syntax/instructions.html
 [Control Instructions]: https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-control
 [Instantiation]: https://webassembly.github.io/spec/core/exec/modules.html#exec-instantiation
