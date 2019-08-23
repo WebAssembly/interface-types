@@ -266,7 +266,7 @@ optional exported function name that it calls after it has read the string:
 
 ```wasm
   (@interface func (export "greeting") (result string)
-    call "greeting_"
+    call-export "greeting_"
     memory-to-string "mem" "free"
   )
 ```
