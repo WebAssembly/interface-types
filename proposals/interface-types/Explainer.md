@@ -449,7 +449,7 @@ to another wasm module. In this example, we start with one module providing a
     string-to-memory "mem" "malloc"
     call-export "get_"
     defer-call-export "free"
-    memory-to-string
+    memory-to-string "mem"
   )
 )
 ```
