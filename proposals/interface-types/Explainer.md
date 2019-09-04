@@ -301,7 +301,7 @@ there is a `defer-call-export` instruction:
 
 This instruction requests that the given function (`free`) be called on all
 exits from the current frame (normal and exceptional). The arguments for
-this deferred call are taken from the top of the stack at the time of the
+this deferred call are copied from the top of the stack at the time of the
 `defer-call-export` (the number and types of which are determined by the
 callee signature, like a normal wasm `call`). Unlike a normal wasm `call`,
 however, these arguments aren't popped, but left on the stack, which is
