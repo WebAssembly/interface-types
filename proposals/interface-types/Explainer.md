@@ -572,7 +572,7 @@ Here we can see all the interesting possibilities:
 This rough list of topics is still to be added in subsequent PRs:
 * bool
 * records
-* sequences
+* sequences (esp. considering interactions with defer)
 * variants
 * closures and interaction with [function references]
 * re-importing/exporting core module import/exports
