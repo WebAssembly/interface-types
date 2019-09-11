@@ -253,36 +253,59 @@ resulting string? For example:
     call $malloc
     ;; initialize malloc'd memory with string
     ;; return pointer and length
-    ;; caller must call "free" when done the string
+    ;; caller must call "free" when done with the string
   )
 )
 ```
 
-This situation would naturally arise in, e.g., a C++ function that returns a
-`std::string` or `std::unique_ptr<char[]>`.
+This situation would naturally arise when exporting, e.g., a C++ function that
+returns a `std::string` or `std::shared_ptr<char[]>`. In both cases, the
+returned C++ object essentially contains a pointer along with the assumption
+that the calling C++ code is responsible for calling the object's destructor,
+which then frees the memory or drops a reference count, resp. But if that
+function is exported from an adapted wasm module, the caller isn't C++ code,
+it's the adapter function.
 
-What we need is to be able to call `free` right after the bytes are
-read from `memory-to-string`. Thus, `memory-to-string` takes an
-optional exported function name that it calls after it has read the string:
+What we need is to be able to call `free` (or some other export corresponding
+to a destructor) after the linear memory bytes are read by `memory-to-string`.
+Because there is no limitation on the number of `call-export`s in an adapter
+function, a first attempt at a solution would be to just call `free` directly:
 
 ```wasm
   (@interface func (export "greeting") (result string)
     call-export "greeting_"
-    memory-to-string "mem" "free"
+    dup
+    memory-to-string "mem"
+    swap
+    call-export "free"
   )
 ```
 
-Note that the ability to call *any* function also allows reference counting
-schemes to call a decrement function, e.g., if a C++ function returned a
-`std::shared_ptr<std::string>`.
+Here we use classic stack manipulation operations to duplicate the `i32` pointer
+value so that it can be read by both `memory-to-string` and the call to `free`.
+Unfortunately, there is a problem: anticipating the [exception handling]
+proposal, if an exception is thrown between the `call-export "greeting_"` and
+the `call-export "free"`, the memory will be leaked. With more complicated
+signatures, there can be many instructions in this range which can throw.
 
-> **TODO** Proper integration with exception handling will likely require
-> switching to a different scheme that is exception safe, so that an exception
-> thrown between `call "greeting_"` and `memory-to-string` *also* calls
-> `"free"`. Moreover, the call to `"free"` should happen after not just
-> `memory-to-string`, but after the `string` value is consumed by an
-> adapter instruction, so that the pair of instructions can be optimized
-> into a direct linear memory copy.
+To address this problem, as well as another problem described [below](#shared-nothing-linking-example),
+there is a `defer-call-export` instruction:
+
+```wasm
+  (@interface func (export "greeting") (result string)
+    call-export "greeting_"
+    defer-call-export "free"
+    memory-to-string "mem"
+  )
+```
+
+This instruction requests that the given function (`free`) be called on all
+exits from the current frame (normal and exceptional). The arguments for
+this deferred call are copied from the top of the stack at the time of the
+`defer-call-export` (the number and types of which are determined by the
+callee signature, like a normal wasm `call`). Unlike a normal wasm `call`,
+however, these arguments aren't popped, but left on the stack, which is
+especially convenient for the common case shown here.
 
 ### Export receiving string
 
@@ -347,7 +370,8 @@ used in the same adapter function:
     arg.get $str
     string-to-memory "mem" "malloc"
     call-export "frob_"
-    memory-to-string "mem" "free"
+    defer-call-export "free"
+    memory-to-string "mem"
   )
 ```
 
@@ -387,10 +411,10 @@ the given name and signature (in the example, `log_ : [i32,i32] → []`).
 This example uses the `memory-to-string` instruction that was previously shown
 in an export adapter functions; now `memory-to-string` is lifting the argument
 of a `call-import` instead of lifting the return value of a `call-export`.
-Note also that `memory-to-string` has no `free` immediate in this example. While
-it would be *possible* to do so, since the caller of the adapter is wasm code,
-it's simpler and potentially more efficient to let the caller worry about when
-to free the string.
+Note also that there is no `defer-call-export "free"` instruction in this
+example. While it would be *possible* to do so, since the caller of the adapter
+is wasm code, it's simpler and potentially more efficient to let the caller
+worry about when to free the string.
 
 Using `string` as the return value of an import is symmetric to above,
 using the previously-introduced `string-to-memory` lowering instruction.
@@ -414,18 +438,18 @@ using the previously-introduced `string-to-memory` lowering instruction.
 With this 2×2 matrix of {lifting,lowering}×{import,export} covered, we can
 now see a complete example of how one wasm module can [shared-nothing link](#Motivation)
 to another wasm module. In this example, we start with one module providing a
-`set` function which takes a `string` key/value pair:
+`get` function which takes a `string` key and returns the associated value:
 
 ```wasm
 (module
-  (func (export "set_") (param i32 i32 i32 i32) ...)
+  (func (export "get_") (param i32 i32) (result i32 i32) ...)
   ...
-  (@interface func (export "set") (param $key string) (param $val string)
+  (@interface func (export "get") (param $key string) (result string)
     arg.get $key
     string-to-memory "mem" "malloc"
-    arg.get $val
-    string-to-memory "mem" "malloc"
-    call-export "set_"
+    call-export "get_"
+    defer-call-export "free"
+    memory-to-string "mem"
   )
 )
 ```
@@ -434,29 +458,40 @@ This module can be imported and used by a client module:
 
 ```wasm
 (module
-  (func (import "" "set_") (param i32 i32 i32 i32))
+  (func (import "" "get_") (param i32 i32) (result i32 i32))
   ...
-  (@interface func $set (import "kv-store" "set") (param string string))
-  (@interface implement (import "" "set_") (param $keyPtr i32) (param $keyLen i32)
-                                           (param $valPtr i32) (param $valLen i32)
-    arg.get $keyPtr
-    arg.get $keyLen
+  (@interface func $get (import "kv-store" "get") (param string) (result string))
+  (@interface implement (import "" "get_") (param $ptr i32) (param $len i32) (result i32 i32)
+    arg.get $ptr
+    arg.get $len
     memory-to-string "mem"
-    arg.get $valPtr
-    arg.get $valLen
-    memory-to-string "mem"
-    call-import $set
+    call-import $get
+    string-to-memory "mem" "malloc"
   )
 )
 ```
 
 If these adapter functions were compiled naively along with their containing
-module, then calling `set` would require temporary, probably garbage-collected,
+module, then calling `get` would require temporary, probably garbage-collected,
 allocations for each `string` value. However, if the engine waits to compile
 adapter functions until the module is [instantiated][Instantiation]—so that it
 can see the adapter functions on both sides of an import call and match lifting
 with lowering instructions—then passing a string can be implemented without
 the intermediate allocation and a direct copy between linear memories.
+
+With this optimization in mind, we return to the `defer-call-export` instruction
+introduced [earlier](#export-returning-string-dynamically-allocated). If
+`defer-call-export` called `free` at the end of the callee adapter function,
+then this direct-copy optimization wouldn't be possible: the linear memory
+would have already been freed (and thus potentially mutated) by the time that
+`string-to-memory` called `malloc`; an intermediate copy would have to be
+made. Instead, just as the compiler considers the adapter function call pair
+as a single unit (as described above), so does `defer-call-export`, specifying
+that the deferred call happens at the end of the *outer* adapter function call.
+This would be peculiar in a general-purpose language with general function call
+nesting, but adapter functions are not general purpose and calls always occur
+in pairs (with host APIs being defined to have their own trivial or
+host-specified adapter functions).
 
 ### Strings with the GC proposal
 
@@ -472,14 +507,13 @@ transparently rewritten to use GC:
 ```wasm
 (module
   (type $Str (array i8))
-  (func (export "set_") (param (ref $Str)) (param (ref $Str)) ...)
+  (func (export "get_") (param (ref $Str)) (result (ref $Str)) ...)
   ...
-  (@interface func (export "set") (param $key string) (param $val string)
+  (@interface func (export "get") (param $key string) (result string)
     arg.get $key
     string-to-gc
-    arg.get $val
-    string-to-gc
-    call-export "set_"
+    call-export "get_"
+    gc-to-string
   )
 )
 ```
@@ -538,7 +572,7 @@ Here we can see all the interesting possibilities:
 This rough list of topics is still to be added in subsequent PRs:
 * bool
 * records
-* sequences
+* sequences (esp. considering interactions with defer)
 * variants
 * closures and interaction with [function references]
 * re-importing/exporting core module import/exports
