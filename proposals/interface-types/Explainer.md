@@ -163,6 +163,7 @@ other types and concepts are introduced.
 1. [Strings in imports](#strings-in-imports)
 1. [Shared-nothing linking example](#shared-nothing-linking-example)
 1. [Strings with the GC proposal](#strings-with-the-GC-proposal)
+1. [Integers](#integers)
 1. [TODO](#TODO)
 
 ### Export returning string (statically allocated)
@@ -488,10 +489,54 @@ representation choices to be added over time. Moreover, the provider module is
 not required to make an all-or-nothing choice; individual parameters can use
 whichever available representation is best.
 
+### Integers
+
+In addition to `string`, the proposal includes the integer types `u8`, `s8`,
+`u16`, `s16`, `u32`, `s32`, `u64` and `s64`. Each of these types represent
+subsets of ℤ, the set of all integers, with `uX` types representing ranges 
+[0, 2<sup>X</sup>-1] and `sX` types representing ranges
+[-2<sup>X-1</sup>,2<sup>X-1</sup>-1]. Since values of these types are proper
+integers, not bit sequences like core wasm `i32` and `i64` values, there is no
+additional information needed to interpret their value as a number.
+
+As with strings, the integral types have associated lifting and lowering
+instructions `lift-int` and `lower-int`, which take the source and destination
+type as explicit immediates, as with the [`block`][Block Validation]
+and [`select`][Select Validation] instructions. For example:
+
+```wat
+(module
+  (func (export "compute_") (param i64 i32) (result i32) ...)
+  ...
+  (@interface func (export "compute") (param s8 u64) (result s64)
+    arg.get 0
+    lower-int s8 i64
+    arg.get 1
+    lower-int u64 i32
+    call-export "compute_"
+    lift-int i32 s64
+  )
+)
+```
+
+Here we can see all the interesting possibilities:
+* `lower-int s8 i64` converts a signed integer in the range [-128,127] to a
+  64-bit value by sign-extension due to the signedness of the source type.
+* `lower-int u64 i32` converts an unsigned value in the range [0, 2<sup>64</sup>-1]
+  to a 32-bit value by truncation.
+* `lift-int i32 s64` converts a 32-bit value to an integer in the range
+  [-2<sup>63</sup>,2<sup>63</sup>-1] by sign-extension due to the signedness of
+  the destination type.
+
+> **NOTE** In the future we could consider supporting the more general set of
+> (u|s)\<bitwidth\> types, supporting more precise static interface contracts.
+> The current set is chosen for it's practical application to C and Web IDL.
+
+
 ### TODO
 
 This rough list of topics is still to be added in subsequent PRs:
-* integers and bool
+* bool
 * records
 * sequences
 * variants
@@ -500,6 +545,7 @@ This rough list of topics is still to be added in subsequent PRs:
 * using core value types in adapter function signatures
 * importing an interface types with [type imports]
 * adapter functions can contain zero or >1 calls
+* subtyping
 
 
 ## Web IDL integration
@@ -608,6 +654,9 @@ leverage existing and planned reference types ([`anyref`], [function references]
 [Type Imports]: https://github.com/WebAssembly/proposal-type-imports/blob/master/proposals/type-imports/Overview.md#imports
 [Type Import]: https://github.com/WebAssembly/proposal-type-imports/blob/master/proposals/type-imports/Overview.md#imports
 [GC]: https://github.com/WebAssembly/gc/blob/master/proposals/gc/Overview.md
+
+[Block Validation]: https://webassembly.github.io/multi-value/core/valid/instructions.html#valid-block
+[Select Validation]: https://webassembly.github.io/reference-types/core/valid/instructions.html#valid-select
 
 [Exception Handling]: https://github.com/WebAssembly/exception-handling/blob/master/proposals/Exceptions.md
 
