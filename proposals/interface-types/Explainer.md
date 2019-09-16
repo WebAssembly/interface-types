@@ -6,8 +6,9 @@ committing to a single memory representation or sharing scheme. Interface types
 can only be used in the interfaces of modules and can only be produced or
 consumed by declarative **interface adapters**.
 
-The proposal is semantically layered on top of the WebAssembly [core spec],
-adding only the ability to adapt the imports and exports of a WebAssembly
+The proposal is semantically layered on top of the WebAssembly [core spec]
+(extended with the [multi-value] and [reference types] proposals), and
+adds only the ability to adapt the imports and exports of a WebAssembly
 module at points which are already host-defined behavior. All adaptations are
 specified in a [custom section] and this feature can be polyfilled using the
 [JS API].
@@ -168,8 +169,9 @@ other types and concepts are introduced.
 
 ### Export returning string (statically allocated)
 
-Let's start with a WebAssembly module that you can write today that returns a
-string that is stored at a fixed location in linear memory:
+Let's start with a WebAssembly module that you can write today (with 
+[multi-value]) that returns a string that is stored at a fixed location in
+linear memory:
 
 ```wasm
 (module
@@ -689,6 +691,7 @@ leverage existing and planned reference types ([`anyref`], [function references]
 [Type Import]: https://github.com/WebAssembly/proposal-type-imports/blob/master/proposals/type-imports/Overview.md#imports
 [GC]: https://github.com/WebAssembly/gc/blob/master/proposals/gc/Overview.md
 
+[Multi-value]: https://github.com/WebAssembly/multi-value/blob/master/proposals/multi-value/Overview.md
 [Block Validation]: https://webassembly.github.io/multi-value/core/valid/instructions.html#valid-block
 [Select Validation]: https://webassembly.github.io/reference-types/core/valid/instructions.html#valid-select
 
