@@ -13,10 +13,13 @@ Calling a two argument integer function, should result in effectively zero code.
 
 ```
 (@interface func (export "twizzle")
-  (param $a1 int32)(param $a2 int32) (result int32)
+  (param $a1 s32)(param $a2 s32) (result s32)
   lcl.get $a1
+  s32-to-i23
   lcl.get $a2
+  s32-to-i32
   call "twizzle_"
+  i32-to-s32
 )
 ```
 
@@ -24,13 +27,16 @@ Calling a two argument integer function, should result in effectively zero code.
 
 ```
 (@interface func (import "" "twozzle")
-  (param $a1 int32)(param $a2 int32) (result int32)
+  (param $a1 s32)(param $a2 s32) (result s32)
 )
 (@interface implement (import "" "twozzle_")
-  (param $b1 int32)(param $b2 int32) (result int32)
+  (param $b1 i32)(param $b2 i32) (result i32)
   lcl.get $b1
+  i32-to-s32
   lcl.get $b2
+  i32-to-s32
   call-import "twozzle"
+  s32-to-i32
 )
 
 ```
@@ -38,51 +44,130 @@ Calling a two argument integer function, should result in effectively zero code.
 ### Adapter Code
 
 ```
-(@adapter M2:"twozzle" as M1:"twizzle"
-  (param $a1 int32)(param $a2 int32) (result int32)
-    lcl.get $a1
-    lcl.get $a2
+(@adapter implement (import "" "twozzle_")
+  (param $b1 i32)(param $b2 i32) (result i32)
+    lcl.get $b1
+    lcl.get $b2
     call M1:"twizzle_"
 )
 ```
 
 This should be viewed as the result of optimizations over an in-line substitution:
 ```
-(@adapter M2:"twozzle" as M1:"twizzle"
-  (param $b1 int32)(param $b2 int32) (result int32)
+(@adapter implement (import "" "twozzle_")
+  (param $b1 i32)(param $b2 i32) (result i32)
+    lcl.get $b1
+    i32-to-s32
+    lcl.get $b2
+    i32-to-s32
+    let s32 (local $a2 s32)
+      let s32 (local $a1 s32)
+        lcl.get $a1
+        s32-to-i23
+        lcl.get $a2
+        s32-to-i32
+        call M1:"twizzle_"
+        i32-to-s32
+      end
+    end
+    s32-to-i32
+)
+```
+
+The `let` pseudo instruction pops elements off the stack and gives them names;
+and is part of the [function reference proposal]
+[https://github.com/WebAssembly/function-references/blob/master/proposals/function-references/Overview.md#local-bindings].
+
+The first step in 'optimising' this sequence is to remove the `let`
+instructions, where possible, and replacing instances of references to them with
+the sub-sequences that gave the variables their value.
+
+For example, in
+
+```
+let s32 (local $a1 s32)
+```
+the sub-sequence that results in the value for `$a1` is:
+
+```
+lcl.get $b1
+i32-to-s32
+```
+
+so, removing the `let` for `a2`, and replacing `lcl.get $a2` with its defining
+subsequence gives:
+
+```
+(@adapter implement (import "" "twozzle_")
+  (param $b1 i32)(param $b2 i32) (result i32)
+    lcl.get $b1
+    i32-to-s32
+    lcl.get $b2
+    i32-to-s32
+    let s32 (local $a2 s32)
+      lcl.get $b1
+      i32-to-s32
+      s32-to-i23
+      lcl.get $a2
+      s32-to-i32
+      call M1:"twizzle_"
+      i32-to-s32
+    end
+    s32-to-i32
+)
+
+```
+and, removing the redundant pair:
+
+```
+i32-to-s32
+s32-to-i32
+```
+gives:
+
+```
+(@adapter implement (import "" "twozzle_")
+  (param $b1 i32)(param $b2 i32) (result i32)
+    lcl.get $b2
+    i32-to-s32
+    let s32 (local $a2 s32)
+      lcl.get $b1
+      lcl.get $a2
+      s32-to-i32
+      call M1:"twizzle_"
+      i32-to-s32
+    end
+    s32-to-i32
+)
+```
+
+Repeating this for the second `let` gives:
+
+```
+(@adapter implement (import "" "twozzle_")
+  (param $b1 i32)(param $b2 i32) (result i32)
     lcl.get $b1
     lcl.get $b2
-    let $a1 $a2
-    lcl.get $a1
-    lcl.get $a2
     call M1:"twizzle_"
+    i32-to-s32
+    s32-to-i32
 )
 ```
-The `let` pseudo instruction pops elements off the stack and gives them names.
 
-Inlining the above example, eliminating the combination `lcl.get $b2`; `let $a2` by rewriting `$b2` with `$a2`:
+with the final removal of the redundant coercion pair at the end:
+
 ```
-(@adapter M2:"twozzle" as M1:"twizzle"
-  (param $b1 int32)(param $a2 int32) (result int32)
+(@adapter implement (import "" "twozzle_")
+  (param $b1 i32)(param $b2 i32) (result i32)
     lcl.get $b1
-    let $a1
-    lcl.get $a1
-    lcl.get $a2
+    lcl.get $b2
     call M1:"twizzle_"
 )
-```
-and again for `$b1/$a1` give the result:
-```
-(@adapter M2:"twozzle" as M1:"twizzle"
-  (param $a1 int32)(param $a2 int32) (result int32)
-    lcl.get $a1
-    lcl.get $a2
-    call M1:"twizzle_"
-)
+
 ```
 
-Below, we will assume that this transformation is applied automatically; except
-where we need to show what happens more clearly.
+Below, we will assume that similar transformations are applied automatically;
+except where we need to show what happens more clearly.
 
 ## Counting Unicodes
 
@@ -289,10 +374,10 @@ pushed onto the stack.
      memory-to-string $mem1
      env.get $ecb
      call-indirect
-     enum-to-int32 @returnCode
+     enum-to-i32 @returnCode
     )
    call $fetch_
-   int32-to-enum @returnCode
+   i32-to-enum @returnCode
 )
 
 (func (export "malloc")
@@ -326,16 +411,16 @@ Importing `fetch` implies exporting the function that implements the callback.
     (func
       (param $status statusCode $text string) (result returnCode)
       lcl.get $status
-      enum-to-int32 @statusCode
+      enum-to-i32 @statusCode
       lcl.get $text
       string-to-memory "mem2" "malloc"
       env.get $callbk
       call-indirect
-      int32-to-enum @returnCode
+      i32-to-enum @returnCode
     )
     
    call $fetch
-   enum-to-int32 @returnCode
+   enum-to-i32 @returnCode
 )
 
 (func (export "malloc")
@@ -359,12 +444,12 @@ Combining the export and import functions leads, in the first instance, to:
     (func
       (param $status statusCode $text string) (result returnCode)
       lcl.get $status
-      enum-to-int32 @statusCode
+      enum-to-i32 @statusCode
       lcl.get $text
       string-to-memory "mem2" "malloc"
       env.get $callbk
       call-indirect
-      int32-to-enum @returnCode
+      i32-to-enum @returnCode
     )
     
   let $cb
@@ -384,11 +469,11 @@ Combining the export and import functions leads, in the first instance, to:
      memory-to-string $mem1
      env.get $ecb
      call-indirect
-     enum-to-int32 @returnCode
+     enum-to-i32 @returnCode
     )
    call $fetch_
-   int32-to-enum @returnCode
-   enum-to-int32 @returnCode
+   i32-to-enum @returnCode
+   enum-to-i32 @returnCode
 )
 ```
 
@@ -411,12 +496,12 @@ instructions), gives:
     (func
       (param $status statusCode $text string) (result returnCode)
       lcl.get $status
-      enum-to-int32 @statusCode
+      enum-to-i32 @statusCode
       lcl.get $text
       string-to-memory "mem2" "malloc"
       env.get $callbk
       call-indirect
-      int32-to-enum @returnCode
+      i32-to-enum @returnCode
     )
     
   let $cb
@@ -432,11 +517,11 @@ instructions), gives:
      memory-to-string $mem1
      env.get $ecb
      call-indirect
-     enum-to-int32 @returnCode
+     enum-to-i32 @returnCode
     )
    call $fetch_
-   int32-to-enum @returnCode
-   enum-to-int32 @returnCode
+   i32-to-enum @returnCode
+   enum-to-i32 @returnCode
 )
 
 ```
@@ -455,12 +540,12 @@ Simplifying low-hanging sequences for clarity:
     (func
       (param $status statusCode $text string) (result returnCode)
       lcl.get $status
-      enum-to-int32 @statusCode
+      enum-to-i32 @statusCode
       lcl.get $text
       string-to-memory "mem2" "malloc"
       env.get $callbk
       call-indirect
-      int32-to-enum @returnCode
+      i32-to-enum @returnCode
     )
     
   func.bind (env $ecb (param $status statusCode $text string) (result returnCode))
@@ -474,7 +559,7 @@ Simplifying low-hanging sequences for clarity:
      memory-to-string $mem1
      env.get $ecb
      call-indirect
-     enum-to-int32 @returnCode
+     enum-to-i32 @returnCode
     )
    call $fetch_
 )
@@ -505,13 +590,13 @@ The double binds in a row can be combined by inlining the call to `env.get $ecb`
      let $status $text
 
      lcl.get $status
-     enum-to-int32 @statusCode
+     enum-to-i32 @statusCode
      lcl.get $text
      string-to-memory "mem2" "malloc"
      env.get $callbk
      call-indirect
-     int32-to-enum @returnCode
-     enum-to-int32 @returnCode
+     i32-to-enum @returnCode
+     enum-to-i32 @returnCode
     )
    call $fetch_
 )
@@ -626,7 +711,7 @@ export, and passed by reference to the import.
   
   lcl.get $session
   call $payWithCard_
-  int32-to-enum boolean
+  i32-to-enum boolean
 )
 
 (func (export "malloc")
@@ -677,7 +762,7 @@ a pointer to a block of memory.
   lcl.get $conn
   
   call $payWithCard
-  enum-to-int32 boolean
+  enum-to-i32 boolean
 )
 ```
 
@@ -736,7 +821,7 @@ clarity, we initially get:
   lcl.get $session
   call $payWithCard_
   int-to-enum boolean
-  enum-to-int32 boolean
+  enum-to-i32 boolean
 )
 ```
 
@@ -776,7 +861,7 @@ In this example we look at how sequences are passed into an API. The signature
 of `vectorPaint` is assumed to be:
 
 ```
-point ::= pt(int32,int23)
+point ::= pt(i32,i32)
 vectorPaint:(sequence<point> pts) => returnCode
 ```
 
@@ -788,6 +873,10 @@ values.
 
 The array is modeled as two values: a pointer to its base and the number of
 elements in the array.
+
+The primary pattern with processing sequences is the iterator pattern; which is
+modeled by the `for` instruction; which iterates a code fragment over a
+sequence.
 
 ```
 (@interface datatype @point
@@ -808,15 +897,14 @@ elements in the array.
   sequence.count
   allocate scale:8 "malloc"
   let array
-  (for $ix $pts.count << for ix in 0..pts.count
-    lcl.get $pts
-    sequence.get $ix
+  lcl.get $pts
+  (for $ix $pt ; for ix,pt in pts
+    lcl.get $pt
     field.get #0
     lcl.get $array
     lcl.get $ix
     i32.index.store #0
-    lcl.get $pts
-    sequence.get $ix
+    lcl.get $pt
     field.get #1
     lcl.get $array
     lcl.get $ix
@@ -824,9 +912,102 @@ elements in the array.
   )
   lcl.get $array
   call $vectorPaint_
-  int32-to-enum @returnCode
+  i32-to-enum @returnCode
 )
 ```
+
+### Import
+
+The primary task in passing a vector of values is the construction of a `sequence`. 
+
+```
+(func $vectorPaint_ (import ("" "vectorPaint_"))
+  (param i32 i32) (result i32)
+
+(@interface func $vectorPaint (import "" "vectorPaint")
+  (param @ptr (sequence @point))
+  (result @returnCode))
+  
+(@interface implement (import "" "vectorPaint_")
+  (param $points i32 $count i32)(result i32)
+  lcl.get $points
+  let $ptr
+  sequence.start @point
+  lcl.get $count
+  loop-for $vector
+    lcl.get $ptr
+    i32.load #0
+    lcl.get $ptr
+    i32.load #1
+    create @point
+    sequence.append
+    lcl.inc $ptr #sizeof(point)
+    lcl.decr $mx
+    br_if $vector
+  end
+  sequence.complete
+  call $vectorPaint
+  enum-to-i32 @returnCode
+)
+```
+
+The `sequence.start`, `sequence.append` and `sequence.complete` instructions are
+used to manage the generation of sequences. The `loop-for` pseudo instruction
+facilitates the adaptation process, but is a slight generalization of the core
+wasm `loop` pattern.
+
+### Adapter
+
+Combining the import and export sequences into an adapter code depends on being
+able to fuse the generating loop with the iterating loop.
+
+The initial in-line version gives:
+
+```
+(@adapter M1:"vectorPaint" as M2:"vectorPaint"
+  (param $points i32 $count i32)(result i32)
+  lcl.get $points
+  let $ptr
+  sequence.start @point
+  lcl.get $count
+  loop-for $vector
+    lcl.get $ptr
+    i32.load #0
+    lcl.get $ptr
+    i32.load #1
+    create @point
+    sequence.append
+    lcl.inc $ptr #sizeof(point)
+    lcl.decr $mx
+    br_if $vector
+  end
+  sequence.complete
+  
+  let $pts
+  lcl.get $pts
+  sequence.count
+  allocate scale:8 "malloc"
+  let array
+  lcl.get $pts
+  (for $ix $pt ; for ix,pt in pts
+    lcl.get $pt
+    field.get #0
+    lcl.get $array
+    lcl.get $ix
+    i32.index.store #0
+    lcl.get $pt
+    field.get #1
+    lcl.get $array
+    lcl.get $ix
+    i32.index.store #4
+  )
+  lcl.get $array
+  call $vectorPaint_
+  i32-to-enum @returnCode
+  enum-to-i32 @returnCode
+)
+```
+
 
 ## Colors
 
@@ -835,11 +1016,5 @@ Packed values
 ## Directory Listing
 
 Error recovery
-
-
-
-
-
-
 
 
