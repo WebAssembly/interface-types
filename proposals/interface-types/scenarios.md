@@ -82,7 +82,7 @@ This should be viewed as the result of optimizations over an in-line substitutio
 ```
 
 The `let` pseudo instruction pops elements off the stack and gives them names;
-and is part of the [function reference proposal][https://github.com/WebAssembly/function-references/blob/master/proposals/function-references/Overview.md#local-bindings].
+and is part of the [function reference proposal](https://github.com/WebAssembly/function-references/blob/master/proposals/function-references/Overview.md#local-bindings).
 
 The first step in 'optimising' this sequence is to remove the `let`
 instructions, where possible, and replacing instances of references to them with
