@@ -55,9 +55,12 @@ The adapter code, that maps the import of `twozzle_` to its implementation as
   (param $b1 i32)(param $b2 i32) (result i32)
     lcl.get $b1
     lcl.get $b2
-    call M1:"twizzle_"
+    call Mx:"twizzle_"
 )
 ```
+
+>Note: we adopt the convention that the `Mx:` prefix refers to the exporting
+>module and `Mi:` refers to the importing module.
 
 This should be viewed as the result of optimizations over an in-line substitution:
 ```
@@ -73,7 +76,7 @@ This should be viewed as the result of optimizations over an in-line substitutio
         s32-to-i23
         lcl.get $a2
         s32-to-i32
-        call M1:"twizzle_"
+        call Mx:"twizzle_"
         i32-to-s32
       end
     end
@@ -82,11 +85,17 @@ This should be viewed as the result of optimizations over an in-line substitutio
 ```
 
 The `let` pseudo instruction pops elements off the stack and gives them names;
-and is part of the [function reference proposal](https://github.com/WebAssembly/function-references/blob/master/proposals/function-references/Overview.md#local-bindings).
+and is part of the [function reference
+proposal](https://github.com/WebAssembly/function-references/blob/master/proposals/function-references/Overview.md#local-bindings).
+
+The overall goal of the rewriting of adapters is to eliminate references to
+interface types and their values. This reflects the intention to construct
+executable code that implements the import of functions whose types are
+specified using interface types.
 
 The first step in 'optimising' this sequence is to remove the `let`
 instructions, where possible, and replacing instances of references to them with
-the sub-sequences that gave the variables their value.
+the sub-sequences that gave the bound variables their value.
 
 For example, in
 
@@ -116,7 +125,7 @@ subsequence gives:
       s32-to-i23
       lcl.get $a2
       s32-to-i32
-      call M1:"twizzle_"
+      call Mx:"twizzle_"
       i32-to-s32
     end
     s32-to-i32
@@ -140,7 +149,7 @@ gives:
       lcl.get $b1
       lcl.get $a2
       s32-to-i32
-      call M1:"twizzle_"
+      call Mx:"twizzle_"
       i32-to-s32
     end
     s32-to-i32
@@ -154,7 +163,7 @@ Repeating this for the second `let` gives:
   (param $b1 i32)(param $b2 i32) (result i32)
     lcl.get $b1
     lcl.get $b2
-    call M1:"twizzle_"
+    call Mx:"twizzle_"
     i32-to-s32
     s32-to-i32
 )
@@ -167,7 +176,7 @@ with the final removal of the redundant coercion pair at the end:
   (param $b1 i32)(param $b2 i32) (result i32)
     lcl.get $b1
     lcl.get $b2
-    call M1:"twizzle_"
+    call Mx:"twizzle_"
 )
 
 ```
@@ -177,18 +186,30 @@ except where we need to show what happens more clearly.
 
 ## Counting Unicodes
 
-Passing a string and returning the number of unicode code points in it.
+Passing a string and returning the number of unicode code points in it. The
+interface type signature for `countCodes` is:
+
+```
+countCodes:(string)=>u32
+```
 
 ### Export
 
+To implement `countCodes` the incoming `string` must be mapped to the local
+linear memory; which, in turn, implies invoking an allocator to find space for
+it:
+
 ```
-(memory (export "mem1") 1)
-(@interface func (export "count")
-  (param $str string) (result i32)
+(@interface func (export "countCodes")
+  (param $str string) (result u32)
   lcl.get $str
-  string-to-memory $mem1 "malloc"
-  call "count_"
+  string-to-memory $memx "malloc"
+  call "countCodes_"
+  i32-to-u23
 )
+
+(memory (export "memx") 1)
+
 (func (export "malloc")
   (param $sze i32) (result i32)
   ...
@@ -197,65 +218,83 @@ Passing a string and returning the number of unicode code points in it.
 
 ### Import
 
+Importing `countCodes` involves reading a `string` out of linear memory.
+
 ```
-(memory (export "mem2" 1)
-(func $count_ (import ("" "count_"))
+(memory (export "memi" 1)
+(func $count_ (import ("" "countCodes_"))
   (param i32 i32) (result i32))
-(@interface func $count (import "" "count")
-  (param $str string) (result i32))
-(@interface implement (import "" "count_")
+
+(@interface func $count (import "" "countCodes")
+  (param $str string) (result u32))
+  
+(@interface implement (import "" "countCodes_")
   (param $ptr i32 $len i32) (result i32))
   lcl.get $ptr
   lcl.get $len
-  memory-to-string "mem2"
-  call-import $count
+  memory-to-string "memi"
+  call-import "countCodes"
+  u32-to-i32
 )
 ```
 
 ### Adapter code
 
-Note that the type of the adapter is in terms of wasm core types.
+After inlining and simple local variable binding elimination, we get a pair of
+coercion operators that read a string out of one memory and write it into
+another:
 
 ```
-(@adapter M1:"count" as M2:"count"
+(@adapter implement (import "" "countCodes_")
   (param $ptr i32 $len i32) (result i32))
   lcl.get $ptr
   lcl.get $len
-  memory-to-string M2:"mem2"
-  string-to-memory M1:$mem1 M1:"malloc"
-  call M2:"count_"
+  memory-to-string Mi:"memi"
+  string-to-memory Mx:$memx Mx:"malloc"
+  call Mx:"countCodes_"
 )
 ```
 which, after collapsing coercion operators, becomes:
 ```
-(@adapter M1:"count" as M2:"count"
+(@adapter implement (import "" "countCodes_")
   (param $ptr i32 $len i32) (result i32))
   lcl.get $ptr
   lcl.get $len
-  string.copy M2:"mem2" M1:$mem1 M1:"malloc"
-  call M2:"count_"
+  string.copy Mi:"memi" Mx:"memx" Mx:"malloc"
+  call Mx:"countCodes_"
 )
 ```
 
 This assumes that `string.copy` combines memory allocation, string copy and
 returns the new address and repeats the size of the string.
 
+This also assumes that the `malloc` cannot fail; below we look at exception
+handling as a way of partially recovering from this failure. Without explicit
+exception handling, a failed `malloc` is required to trap.
+
 ## Getenv Function
 
-The `getenv` function builds on `count` by also returning a `string`.
+The `getenv` function builds on `countCodes` by also returning a `string`. Its
+interface type signature is:
+
+```
+getenv:(string)=>string
+```
 
 ### Export
 
 
 ```
-(memory (export "mem1") 1)
 (@interface func (export "getenv")
   (param $str string) (result string)
   lcl.get $str
-  string-to-memory $mem1 "malloc"
+  string-to-memory "memx" "malloc"
   call "getenv_"
-  memory-to-string $mem1
+  memory-to-string "memx"
 )
+
+(memory (export "memx") 1)
+
 (func (export "malloc")
   (param $sze i32) (result i32)
   ...
@@ -264,23 +303,26 @@ The `getenv` function builds on `count` by also returning a `string`.
 
 ### Import
 
-The importer must also export `malloc` so that the returned string can be
+The importer must also export a version of `malloc` so that the returned string can be
 stored.
 
 ```
-(memory (export "mem2" 1)
 (func $getenv_ (import ("" "getenv_"))
   (param i32 i32) (result i32 i32))
+
 (@interface func $getenv (import "" "getenv")
   (param $str string) (result string))
+
 (@interface implement (import "" "getenv_")
-  (param $ptr i32 $len i32) (result i32))
+  (param $ptr i32) (param $len i32) (result i32))
   lcl.get $ptr
   lcl.get $len
-  memory-to-string "mem2"
+  memory-to-string "memi"
   call-import $getenv
-  string-to-memory "mem2" "malloc"
+  string-to-memory "memi" "malloc"
 )
+
+(memory (export "memi" 1)
 
 (func (export "malloc")
   (param $sze i32) (result i32)
@@ -291,29 +333,16 @@ stored.
 
 ### Adapter
 
-```
-(@adapter M1:"getenv" as M2:"getenv"
-  (param $ptr i32 $len i32) (result i32 i32))
-  lcl.get $ptr
-  lcl.get $len
-  memory-to-string M2:"mem2"
-  string-to-memory M1:$mem1 M1:"malloc"
-  call M1:"getenv_"
-  memory-to-string M1:$mem1
-  string-to-memory M2:"mem2" M2:"malloc"
-)
-```
-
-which, after collapsing coercions, becomes
+After collapsing coercions and inlining variable bindings:
 
 ```
-(@adapter M1:"getenv" as M2:"getenv"
-  (param $ptr i32 $len i32) (result i32 i32))
+(@adapter implement (import "" "getenv_")
+  (param $ptr i32) (param $len i32) (result i32 i32))
   lcl.get $ptr
   lcl.get $len
-  string.copy M2:"mem2" M1:$mem1 M1:"malloc"
-  call M1:"getenv_"
-  string.copy M1:$mem1 M2:"mem2" M2:"malloc"
+  string.copy Mi:"memi" Mx:memx Mx:"malloc"
+  call Mx:"getenv_"
+  string.copy Mx:"memx" Mi:"memi" Mi:"malloc"
 )
 ```
 
@@ -322,7 +351,7 @@ which, after collapsing coercions, becomes
 The `fetch` function includes a callback which is invoked whenever 'something
 happens' on the session. 
 
-It also introduces two new enumeration types: `ReturnCode` and `StatusCode`.
+It also introduces two new enumeration types: `returnCode` and `statusCode`.
 
 The signature of `fetch` as an interface type is:
 
@@ -359,38 +388,42 @@ pushed onto the stack.
   )
 )
 
-(memory (export "mem1") 1)
+(memory (export "memx") 1)
 
 (@interface func (export "fetch")
-  (param $u string 
-         $cb (func (param $status statusCode $text string) (result returnCode)))
+  (param $u string)
+  (param $cb (ref (func (param $status @statusCode) (param $text string) (result @returnCode))))
   (result string)
   lcl.get $u
-  string-to-memory $mem1 "malloc"
+  string-to-memory "memx" "malloc"
   
   lcl.get $cb
-  func.bind (env $ecb (param $status statusCode $text string) (result returnCode))
-    (func
-      (param $status i32 $txt i32 $len i32)
-      (result i32)
-     lcl.get $status
-     int23-to-enum @statusCode
-     lcl.get $txt
-     lcl.get $len
-     memory-to-string $mem1
-     env.get $ecb
-     call-indirect
-     enum-to-i32 @returnCode
-    )
-   call $fetch_
-   i32-to-enum @returnCode
+  func.ref $callBack
+  func.bind (func (param @statusCode string) (result @returnCode)
+  call $fetch_
+  i32-to-enum @returnCode
+)
+
+(func $callBack
+  (param $ecb (ref (func (param statusCode string) (result returnCode))))
+  (param $status i32)
+  (param $text i32)
+  (param $len i32)
+  (result i32)
+  lcl.get $status
+  i32-to-enum @statusCode
+  lcl.get $text
+  lcl.get $len
+  memory-to-string "memx"
+  lcl.get $ecb
+  call-indirect
+  enum-to-i32 @returnCode
 )
 
 (func (export "malloc")
   (param $sze i32) (result i32)
   ...
 )
-
 ```
 
 ### Import
@@ -398,35 +431,39 @@ pushed onto the stack.
 Importing `fetch` implies exporting the function that implements the callback.
 
 ```
-(memory (export "mem2" 1)
+(memory (export "memi" 1)
 
 (func $fetch_ (import ("" "fetch_"))
-  (param i32 i32 (func (param i32 i32)(result i32))) (result i32))
+  (param i32 i32 (ref (func (param i32 i32)(result i32)))) (result i32))
 
 (@interface func $fetch (import "" "fetch")
-  (param string (func (param @statusCode string) (result @returnCode)))
+  (param string (ref (func (param @statusCode string)) (result @returnCode)))
   (result @returnCode))
   
 (@interface implement (import "" "fetch_")
-  (param $url i32 $len i32 $callb (func (param i32 i32)(result i32))) (result i32)
+  (param $url i32) (param $len i32) (param $callb (ref (func (param i32 i32)(result i32)))) (result i32)
   lcl.get $url
   lcl.get $len
-  memory-to-string "mem2"
+  memory-to-string "memi"
   lcl.get $callb
-  func.bind (env $callbk (func (param i32 i32 i32) (result i32)))
-    (func
-      (param $status statusCode $text string) (result returnCode)
-      lcl.get $status
-      enum-to-i32 @statusCode
-      lcl.get $text
-      string-to-memory "mem2" "malloc"
-      env.get $callbk
-      call-indirect
-      i32-to-enum @returnCode
-    )
-    
-   call $fetch
-   enum-to-i32 @returnCode
+  func.ref $cbEntry
+  func.bind (func (param i32 i32 i32) (result i32))
+  call-import $fetch
+  enum-to-i32 @returnCode
+)
+
+(func $cbEntry
+  (param $callBk (ref (func (param i32 i32 i32) (result i32))))
+  (param $status @statusCode)
+  (param $text string)
+  (result @returnCode)
+  lcl.get $status
+  enum-to-i32 @statusCode
+  lcl.get $text
+  string-to-memory "memi" "malloc"
+  lcl.get $callbk
+  call-indirect
+  i32-to-enum @returnCode
 )
 
 (func (export "malloc")
@@ -440,46 +477,25 @@ Importing `fetch` implies exporting the function that implements the callback.
 Combining the export and import functions leads, in the first instance, to:
 
 ```
-(@adapter M1:"fetch" as M2:"fetch"
-  (param $url i32 $len i32 $callb (func (param i32 i32)(result i32))) (result i32)
+(@adapter implement (import "" "fetch_")
+  (param $url i32) (param $len i32) (param $callb (ref (func (param i32 i32)(result i32)))) (result i32)
   lcl.get $url
   lcl.get $len
-  memory-to-string "mem2"
+  memory-to-string "memi"
   lcl.get $callb
-  func.bind (env $callbk (func (param i32 i32 i32) (result i32)))
-    (func
-      (param $status statusCode $text string) (result returnCode)
-      lcl.get $status
-      enum-to-i32 @statusCode
-      lcl.get $text
-      string-to-memory "mem2" "malloc"
-      env.get $callbk
-      call-indirect
-      i32-to-enum @returnCode
-    )
-    
-  let $cb
-  let $u
-
+  func.ref $cbEntry
+  func.bind (func (param i32 i32 i32) (result i32))
+  
+  let ($u string) ($cb (ref (func (param i32 i32 i32) (result i32))))
   lcl.get $u
-  string-to-memory $mem1 "malloc"
+  string-to-memory "memx" "malloc"
+  
   lcl.get $cb
-  func.bind (env $ecb (param $status statusCode $text string) (result returnCode))
-    (func
-      (param $status i32 $txt i32 $len i32)
-      (result i32)
-     lcl.get $status
-     int23-to-enum @statusCode
-     lcl.get $txt
-     lcl.get $len
-     memory-to-string $mem1
-     env.get $ecb
-     call-indirect
-     enum-to-i32 @returnCode
-    )
-   call $fetch_
-   i32-to-enum @returnCode
-   enum-to-i32 @returnCode
+  func.ref Mx:$callBack
+  func.bind (func (param @statusCode string) (result @returnCode)
+  call Mx:$fetch_
+  i32-to-enum @returnCode
+  enum-to-i32 @returnCode
 )
 ```
 
@@ -487,157 +503,71 @@ Some reordering, (which is hard to sanction if we allow side-affecting
 instructions), gives:
 
 ```
-(@adapter M1:"fetch" as M2:"fetch"
-  (param $url i32 $len i32 $callb (func (param i32 i32)(result i32))) (result i32)
+(@adapter implement (import "" "fetch_")
+  (param $url i32) (param $len i32) (param $callb (ref (func (param i32 i32)(result i32)))) (result i32)
   lcl.get $url
   lcl.get $len
-  memory-to-string "mem2"
-  let $u
+  string.copy Mi:"memi" Mx:"memx" Mx:"malloc"
 
-  lcl.get $u
-  string-to-memory $mem1 "malloc"
-  
   lcl.get $callb
-  func.bind (env $callbk (func (param i32 i32 i32) (result i32)))
-    (func
-      (param $status statusCode $text string) (result returnCode)
-      lcl.get $status
-      enum-to-i32 @statusCode
-      lcl.get $text
-      string-to-memory "mem2" "malloc"
-      env.get $callbk
-      call-indirect
-      i32-to-enum @returnCode
-    )
-    
-  let $cb
-  lcl.get $cb
-  func.bind (env $ecb (param $status statusCode $text string) (result returnCode))
-    (func
-      (param $status i32 $txt i32 $len i32)
-      (result i32)
-     lcl.get $status
-     int23-to-enum @statusCode
-     lcl.get $txt
-     lcl.get $len
-     memory-to-string $mem1
-     env.get $ecb
-     call-indirect
-     enum-to-i32 @returnCode
-    )
-   call $fetch_
-   i32-to-enum @returnCode
-   enum-to-i32 @returnCode
+  func.ref Mi:$cbEntry
+  func.bind (func (param i32 i32 i32) (result i32))
+  func.ref Mx:$callBack
+  func.bind (func (param @statusCode string) (result @returnCode)
+  call Mx:$fetch_
 )
 
 ```
+The sequence of a `func.ref` followed by a `func.bind` amounts to a
+partial function application and, like regular function application, can be
+inlined. 
 
-Simplifying low-hanging sequences for clarity:
+In particular, we specialize `Mx:$callBack` with the constant `Mi:$cbEntry`
+replacing the bound variable `$ecb`. After inlining the now constant function
+call, we get
 
 ```
-(@adapter M1:"fetch" as M2:"fetch"
-  (param $url i32 $len i32 $callb (func (param i32 i32)(result i32))) (result i32)
+(@adapter $callBackx func
+  (param $callBk (ref (func (param i32 i32 i32) (result i32))))
+  (param $status i32)
+  (param $text i32)
+  (param $len i32)
+  (result i32)
+  lcl.get $status
+
+  lcl.get $text
+  lcl.get $len
+  string.copy Mx:"memx" Mi:"memi" Mi:"malloc"
+
+  lcl.get $callbk
+  call-indirect
+)
+```
+
+and the original implementation of the adapter becomes:
+
+```
+(@adapter implement (import "" "fetch_")
+  (param $url i32)
+  (param $len i32)
+  (param $callb (ref (func (param i32 i32)(result i32))))
+  (result i32)
   lcl.get $url
   lcl.get $len
-  string.copy M2:"mem2" M1:$mem1 "malloc"
-  
+  string.copy Mi:"memi" Mx:"memx" Mx:"malloc"
+
   lcl.get $callb
-  func.bind (env $callbk (func (param i32 i32 i32) (result i32)))
-    (func
-      (param $status statusCode $text string) (result returnCode)
-      lcl.get $status
-      enum-to-i32 @statusCode
-      lcl.get $text
-      string-to-memory "mem2" "malloc"
-      env.get $callbk
-      call-indirect
-      i32-to-enum @returnCode
-    )
-    
-  func.bind (env $ecb (param $status statusCode $text string) (result returnCode))
-    (func
-      (param $status i32 $txt i32 $len i32)
-      (result i32)
-     lcl.get $status
-     int23-to-enum @statusCode
-     lcl.get $txt
-     lcl.get $len
-     memory-to-string $mem1
-     env.get $ecb
-     call-indirect
-     enum-to-i32 @returnCode
-    )
-   call $fetch_
+  func.ref Mx:$callBackx
+  func.bind (func (param i32 i32 i32) (result i32))
+  call Mx:$fetch_
 )
-
-```
-
-The double binds in a row can be combined by inlining the call to `env.get $ecb`:
-
-```
-(@adapter M1:"fetch" as M2:"fetch"
-  (param $url i32 $len i32 $callb (func (param i32 i32)(result i32))) (result i32)
-  lcl.get $url
-  lcl.get $len
-  string.copy M2:"mem2" M1:$mem1 "malloc"
-  
-  lcl.get $callb
-    
-  func.bind (env $callbk (func (param i32 i32 i32) (result i32)))
-    (func
-      (param $status i32 $txt i32 $len i32)
-      (result i32)
-     lcl.get $status
-     int23-to-enum @statusCode
-     lcl.get $txt
-     lcl.get $len
-     memory-to-string $mem1
-     
-     let $status $text
-
-     lcl.get $status
-     enum-to-i32 @statusCode
-     lcl.get $text
-     string-to-memory "mem2" "malloc"
-     env.get $callbk
-     call-indirect
-     i32-to-enum @returnCode
-     enum-to-i32 @returnCode
-    )
-   call $fetch_
-)
-
-```
-More reordering and simplification:
-
-```
-(@adapter M1:"fetch" as M2:"fetch"
-  (param $url i32 $len i32 $callb (func (param i32 i32)(result i32))) (result i32)
-  lcl.get $url
-  lcl.get $len
-  string.copy M2:"mem2" M1:$mem1 "malloc"
-  
-  lcl.get $callb
-    
-  func.bind (env $callbk (func (param i32 i32 i32) (result i32)))
-    (func
-      (param $status i32 $txt i32 $len i32)
-      (result i32)
-     lcl.get $status
-
-     lcl.get $txt
-     lcl.get $len
-     string.copy M1:$mem1 M2:"mem2" "malloc" 
-
-     env.get $callbk
-     call-indirect
-    )
-   call $fetch_
-)
-
 ```
 
 Which is reasonable code.
+
+>Note that we are not able to specialize `Mx:$callBackx` further because the
+>function value passed to `func.bind` is not a known function -- it is part of
+>the `fetch` API.
 
 ## Pay by Credit Card
 
@@ -652,15 +582,15 @@ The signature of `payWithCard` as an interface type is:
 
 ```
 cc ::= cc{
-  ccNo : int64;
+  ccNo : u64;
   name : string;
   expires : {
-    mon : int8;
-    year : int16
+    mon : u8;
+    year : u16
   }
-  ccv : int16
+  ccv : u16
 }
-payWithCard:(card : cc, amount:int64, session:resource<connection>) => boolean
+payWithCard:(card:cc, amount:s64, session:resource<connection>) => boolean
 ```
 
 ### Export
@@ -676,15 +606,15 @@ export, and passed by reference to the import.
 
 ```
 (@interface datatype @cc 
-  (record
-    (ccNo int64)
+  (record "cc"
+    (ccNo u64)
     (name string)
     (expires (record
-      (mon int8)
-      (year int16)
+      (mon u8)
+      (year u16)
       )
     )
-    (ccv int16)
+    (ccv u16)
   )
 )
 
@@ -696,8 +626,8 @@ export, and passed by reference to the import.
   (param i64 i32 i32 i16 i16 eqref) (result i32)
 
 (@interface func (export "payWithCard")
-  (param $card @cc 
-         $session (resource @connection))
+  (param $card @cc)
+  (param $session (resource @connection))
   (result boolean)
   lcl.get $card
   field.get #cc.ccNo   << access ccNo
@@ -741,9 +671,12 @@ a pointer to a block of memory.
   (result boolean))
   
 (@interface implement (import "" "payWithCard_")
-  (param $cc i32 $conn eqref)(result i32)
+  (param $cc i32)
+  (param $conn eqref)
+  (result i32)
   lcl.get $cc
   i64.load #cc.ccNo
+  i64-to-u64
 
   lcl.get $cc
   i32.load #cc.name.ptr
@@ -758,7 +691,7 @@ a pointer to a block of memory.
   lcl.get $cc
   i16.load #cc.expires.year
 
-  create (record (mon int16) (year int16))
+  create (record (mon u16) (year u16))
   
   lcl.get $cc
   i16.load #cc.ccv
