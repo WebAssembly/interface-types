@@ -7,7 +7,7 @@ exports.
 ## Notes
 Added let, func.bind, env.get, field.get, string.copy, create instructions.
 
-Changed arg.get to lcl.get because it is clearer when combined with let.
+Changed arg.get to local.get because it is clearer when combined with let.
 
 ## Two Argument Integer Function
 
@@ -18,9 +18,9 @@ Calling a two argument integer function, should result in effectively zero code.
 ```
 (@interface func (export "twizzle")
   (param $a1 s32)(param $a2 s32) (result s32)
-  lcl.get $a1
+  local.get $a1
   s32-to-i23
-  lcl.get $a2
+  local.get $a2
   s32-to-i32
   call "twizzle_"
   i32-to-s32
@@ -35,9 +35,9 @@ Calling a two argument integer function, should result in effectively zero code.
 )
 (@interface implement (import "" "twozzle_")
   (param $b1 i32)(param $b2 i32) (result i32)
-  lcl.get $b1
+  local.get $b1
   i32-to-s32
-  lcl.get $b2
+  local.get $b2
   i32-to-s32
   call-import "twozzle"
   s32-to-i32
@@ -53,8 +53,8 @@ The adapter code, that maps the import of `twozzle_` to its implementation as
 ```
 (@adapter implement (import "" "twozzle_")
   (param $b1 i32)(param $b2 i32) (result i32)
-    lcl.get $b1
-    lcl.get $b2
+    local.get $b1
+    local.get $b2
     call Mx:"twizzle_"
 )
 ```
@@ -66,15 +66,15 @@ This should be viewed as the result of optimizations over an in-line substitutio
 ```
 (@adapter implement (import "" "twozzle_")
   (param $b1 i32)(param $b2 i32) (result i32)
-    lcl.get $b1
+    local.get $b1
     i32-to-s32
-    lcl.get $b2
+    local.get $b2
     i32-to-s32
     let s32 (local $a2 s32)
       let s32 (local $a1 s32)
-        lcl.get $a1
+        local.get $a1
         s32-to-i23
-        lcl.get $a2
+        local.get $a2
         s32-to-i32
         call Mx:"twizzle_"
         i32-to-s32
@@ -105,25 +105,25 @@ let s32 (local $a1 s32)
 the sub-sequence that results in the value for `$a1` is:
 
 ```
-lcl.get $b1
+local.get $b1
 i32-to-s32
 ```
 
-so, removing the `let` for `a2`, and replacing `lcl.get $a2` with its defining
+so, removing the `let` for `a2`, and replacing `local.get $a2` with its defining
 subsequence gives:
 
 ```
 (@adapter implement (import "" "twozzle_")
   (param $b1 i32)(param $b2 i32) (result i32)
-    lcl.get $b1
+    local.get $b1
     i32-to-s32
-    lcl.get $b2
+    local.get $b2
     i32-to-s32
     let s32 (local $a2 s32)
-      lcl.get $b1
+      local.get $b1
       i32-to-s32
       s32-to-i23
-      lcl.get $a2
+      local.get $a2
       s32-to-i32
       call Mx:"twizzle_"
       i32-to-s32
@@ -143,11 +143,11 @@ gives:
 ```
 (@adapter implement (import "" "twozzle_")
   (param $b1 i32)(param $b2 i32) (result i32)
-    lcl.get $b2
+    local.get $b2
     i32-to-s32
     let s32 (local $a2 s32)
-      lcl.get $b1
-      lcl.get $a2
+      local.get $b1
+      local.get $a2
       s32-to-i32
       call Mx:"twizzle_"
       i32-to-s32
@@ -161,8 +161,8 @@ Repeating this for the second `let` gives:
 ```
 (@adapter implement (import "" "twozzle_")
   (param $b1 i32)(param $b2 i32) (result i32)
-    lcl.get $b1
-    lcl.get $b2
+    local.get $b1
+    local.get $b2
     call Mx:"twizzle_"
     i32-to-s32
     s32-to-i32
@@ -174,8 +174,8 @@ with the final removal of the redundant coercion pair at the end:
 ```
 (@adapter implement (import "" "twozzle_")
   (param $b1 i32)(param $b2 i32) (result i32)
-    lcl.get $b1
-    lcl.get $b2
+    local.get $b1
+    local.get $b2
     call Mx:"twizzle_"
 )
 
@@ -202,7 +202,7 @@ it:
 ```
 (@interface func (export "countCodes")
   (param $str string) (result u32)
-  lcl.get $str
+  local.get $str
   string-to-memory $memx "malloc"
   call "countCodes_"
   i32-to-u23
@@ -230,8 +230,8 @@ Importing `countCodes` involves reading a `string` out of linear memory.
   
 (@interface implement (import "" "countCodes_")
   (param $ptr i32 $len i32) (result i32))
-  lcl.get $ptr
-  lcl.get $len
+  local.get $ptr
+  local.get $len
   memory-to-string "memi"
   call-import "countCodes"
   u32-to-i32
@@ -247,8 +247,8 @@ another:
 ```
 (@adapter implement (import "" "countCodes_")
   (param $ptr i32 $len i32) (result i32))
-  lcl.get $ptr
-  lcl.get $len
+  local.get $ptr
+  local.get $len
   memory-to-string Mi:"memi"
   string-to-memory Mx:$memx Mx:"malloc"
   call Mx:"countCodes_"
@@ -258,8 +258,8 @@ which, after collapsing coercion operators, becomes:
 ```
 (@adapter implement (import "" "countCodes_")
   (param $ptr i32 $len i32) (result i32))
-  lcl.get $ptr
-  lcl.get $len
+  local.get $ptr
+  local.get $len
   string.copy Mi:"memi" Mx:"memx" Mx:"malloc"
   call Mx:"countCodes_"
 )
@@ -287,7 +287,7 @@ getenv:(string)=>string
 ```
 (@interface func (export "getenv")
   (param $str string) (result string)
-  lcl.get $str
+  local.get $str
   string-to-memory "memx" "malloc"
   call "getenv_"
   memory-to-string "memx"
@@ -315,8 +315,8 @@ stored.
 
 (@interface implement (import "" "getenv_")
   (param $ptr i32) (param $len i32) (result i32))
-  lcl.get $ptr
-  lcl.get $len
+  local.get $ptr
+  local.get $len
   memory-to-string "memi"
   call-import $getenv
   string-to-memory "memi" "malloc"
@@ -338,8 +338,8 @@ After collapsing coercions and inlining variable bindings:
 ```
 (@adapter implement (import "" "getenv_")
   (param $ptr i32) (param $len i32) (result i32 i32))
-  lcl.get $ptr
-  lcl.get $len
+  local.get $ptr
+  local.get $len
   string.copy Mi:"memi" Mx:memx Mx:"malloc"
   call Mx:"getenv_"
   string.copy Mx:"memx" Mi:"memi" Mi:"malloc"
@@ -394,10 +394,10 @@ pushed onto the stack.
   (param $u string)
   (param $cb (ref (func (param $status @statusCode) (param $text string) (result @returnCode))))
   (result string)
-  lcl.get $u
+  local.get $u
   string-to-memory "memx" "malloc"
   
-  lcl.get $cb
+  local.get $cb
   func.ref $callBack
   func.bind (func (param @statusCode string) (result @returnCode)
   call $fetch_
@@ -410,12 +410,12 @@ pushed onto the stack.
   (param $text i32)
   (param $len i32)
   (result i32)
-  lcl.get $status
+  local.get $status
   i32-to-enum @statusCode
-  lcl.get $text
-  lcl.get $len
+  local.get $text
+  local.get $len
   memory-to-string "memx"
-  lcl.get $ecb
+  local.get $ecb
   call-indirect
   enum-to-i32 @returnCode
 )
@@ -442,10 +442,10 @@ Importing `fetch` implies exporting the function that implements the callback.
   
 (@interface implement (import "" "fetch_")
   (param $url i32) (param $len i32) (param $callb (ref (func (param i32 i32)(result i32)))) (result i32)
-  lcl.get $url
-  lcl.get $len
+  local.get $url
+  local.get $len
   memory-to-string "memi"
-  lcl.get $callb
+  local.get $callb
   func.ref $cbEntry
   func.bind (func (param i32 i32 i32) (result i32))
   call-import $fetch
@@ -457,11 +457,11 @@ Importing `fetch` implies exporting the function that implements the callback.
   (param $status @statusCode)
   (param $text string)
   (result @returnCode)
-  lcl.get $status
+  local.get $status
   enum-to-i32 @statusCode
-  lcl.get $text
+  local.get $text
   string-to-memory "memi" "malloc"
-  lcl.get $callbk
+  local.get $callbk
   call-indirect
   i32-to-enum @returnCode
 )
@@ -479,18 +479,18 @@ Combining the export and import functions leads, in the first instance, to:
 ```
 (@adapter implement (import "" "fetch_")
   (param $url i32) (param $len i32) (param $callb (ref (func (param i32 i32)(result i32)))) (result i32)
-  lcl.get $url
-  lcl.get $len
+  local.get $url
+  local.get $len
   memory-to-string "memi"
-  lcl.get $callb
+  local.get $callb
   func.ref $cbEntry
   func.bind (func (param i32 i32 i32) (result i32))
   
   let ($u string) ($cb (ref (func (param i32 i32 i32) (result i32))))
-  lcl.get $u
+  local.get $u
   string-to-memory "memx" "malloc"
   
-  lcl.get $cb
+  local.get $cb
   func.ref Mx:$callBack
   func.bind (func (param @statusCode string) (result @returnCode)
   call Mx:$fetch_
@@ -505,11 +505,11 @@ instructions), gives:
 ```
 (@adapter implement (import "" "fetch_")
   (param $url i32) (param $len i32) (param $callb (ref (func (param i32 i32)(result i32)))) (result i32)
-  lcl.get $url
-  lcl.get $len
+  local.get $url
+  local.get $len
   string.copy Mi:"memi" Mx:"memx" Mx:"malloc"
 
-  lcl.get $callb
+  local.get $callb
   func.ref Mi:$cbEntry
   func.bind (func (param i32 i32 i32) (result i32))
   func.ref Mx:$callBack
@@ -533,13 +533,13 @@ call, we get
   (param $text i32)
   (param $len i32)
   (result i32)
-  lcl.get $status
+  local.get $status
 
-  lcl.get $text
-  lcl.get $len
+  local.get $text
+  local.get $len
   string.copy Mx:"memx" Mi:"memi" Mi:"malloc"
 
-  lcl.get $callbk
+  local.get $callbk
   call-indirect
 )
 ```
@@ -552,11 +552,11 @@ and the original implementation of the adapter becomes:
   (param $len i32)
   (param $callb (ref (func (param i32 i32)(result i32))))
   (result i32)
-  lcl.get $url
-  lcl.get $len
+  local.get $url
+  local.get $len
   string.copy Mi:"memi" Mx:"memx" Mx:"malloc"
 
-  lcl.get $callb
+  local.get $callb
   func.ref Mx:$callBackx
   func.bind (func (param i32 i32 i32) (result i32))
   call Mx:$fetch_
@@ -620,32 +620,35 @@ export, and passed by reference to the import.
 
 (@interface typealias @connection eqref)
 
-(memory (export $mem1) 1)
+(memory (export $memx) 1)
 
 (func $payWithCard_ (export ("" "payWithCard_"))
-  (param i64 i32 i32 i16 i16 eqref) (result i32)
+  (param i64 i32 i32 i32 i32 i32 eqref) (result i32)
 
 (@interface func (export "payWithCard")
   (param $card @cc)
   (param $session (resource @connection))
   (result boolean)
-  lcl.get $card
-  field.get #cc.ccNo   << access ccNo
 
-  lcl.get $card
+  local.get $card
+  field.get #cc.ccNo   << access ccNo
+  u64-to-i64
+
+  local.get $card
   field.get #cc.name
   string-to-memory $mem1 "malloc"
   
-  lcl.get $card
+  local.get $card
   field.get #cc.expires.mon
 
-  lcl.get $card
+  local.get $card
   field.get #cc.expires.year
 
-  lcl.get $cc
+  local.get $card
   field.get #cc.ccv
   
-  lcl.get $session
+  local.get $session
+  resource-to-eqref @connection
   call $payWithCard_
   i32-to-enum boolean
 )
@@ -674,31 +677,33 @@ a pointer to a block of memory.
   (param $cc i32)
   (param $conn eqref)
   (result i32)
-  lcl.get $cc
-  i64.load #cc.ccNo
+
+  local.get $cc
+  i64.load {offset #cc.ccNo}
   i64-to-u64
 
-  lcl.get $cc
-  i32.load #cc.name.ptr
+  local.get $cc
+  i32.load {offset #cc.name.ptr}
 
-  lcl.get $cc
-  i32.load #cc.name.len
-  memory-to-string "mem2"
+  local.get $cc
+  i32.load {offset #cc.name.len}
+  memory-to-string "memi"
   
-  lcl.get $cc
-  i16.load #cc.expires.mon
+  local.get $cc
+  i16.load_u {offset #cc.expires.mon}
 
-  lcl.get $cc
-  i16.load #cc.expires.year
+  local.get $cc
+  i16.load_u {offset #cc.expires.year}
 
   create (record (mon u16) (year u16))
   
-  lcl.get $cc
-  i16.load #cc.ccv
+  local.get $cc
+  i16.load_u {offset #cc.ccv}
 
   create @cc
   
-  lcl.get $conn
+  local.get $conn
+  eqref-to-resource @connection
   
   call $payWithCard
   enum-to-i32 boolean
@@ -711,88 +716,110 @@ Combining the import, exports and distributing the arguments, renaming `cc` for
 clarity, we initially get:
 
 ```
-(@adapter M1:"payWithCard" as M2:"payWithCard"
-  (param $cc i32 $conn eqref)(result i32)
+(@adapter implement (import "" "payWithCard_")
+  (param $cc i32)
+  (param $conn eqref)
+  (result i32)
   
-  lcl.get $cc
-  i64.load mem2:#cc.ccNo
+  local.get $cc
+  i64.load {offset #cc.ccNo}
+  i64-to-u64
 
-  lcl.get $cc
-  i32.load mem2:#cc.name.ptr
+  local.get $cc
+  i32.load {offset #cc.name.ptr}
 
-  lcl.get $cc
-  i32.load mem2:#cc.name.len
-  memory-to-string "mem2"
+  local.get $cc
+  i32.load {offset #cc.name.len}
+  memory-to-string "memi"
   
-  lcl.get $cc
-  i16.load mem2:#cc.expires.mon
+  local.get $cc
+  i16.load_u {offset #cc.expires.mon}
 
-  lcl.get $cc
-  i16.load mem2:#cc.expires.year
+  local.get $cc
+  i16.load_u {offset #cc.expires.year}
 
-  create (record (mon int16) (year int16))
+  create (record (mon u16) (year u16))
   
-  lcl.get $cc
-  i16.load mem2:#cc.ccv
+  local.get $cc
+  i16.load_u {offset #cc.ccv}
 
   create @cc
   
-  lcl.get $conn
-  let $session
-  let $card
+  local.get $conn
+  eqref-to-resource @connection
 
-  lcl.get $card
+  let $session (resource @connection)
+  let $card @cc
+
+  local.get $card
   field.get #cc.ccNo   << access ccNo
+  u64-to-i64
 
-  lcl.get $card
+  local.get $card
   field.get #cc.name
   string-to-memory $mem1 "malloc"
   
-  lcl.get $card
+  local.get $card
   field.get #cc.expires.mon
+  u16-to-i32
 
-  lcl.get $card
+  local.get $card
   field.get #cc.expires.year
+  u16-to-i32
 
-  lcl.get $cc
+  local.get $card
   field.get #cc.ccv
+  u16-to-i32
   
-  lcl.get $session
+  local.get $session
+
+  resource-to-eqref @connection
   call $payWithCard_
-  int-to-enum boolean
+  i32-to-enum boolean
+  end
+  end
   enum-to-i32 boolean
 )
 ```
 
 With some assumptions (such as no aliasing, no writing to locals, no
-re-entrancy), we can propagate and inline the definitions of intermediates:
+re-entrancy), we can propagate and inline the definitions of intermediates. This
+amounts to 'regular' inlining where we recurse into records and treat the fields
+of the record in an analogous fashion to arguments to the call.
 
 ```
-(@adapter M1:"payWithCard" as M2:"payWithCard"
-  (param $cc i32 $conn eqref)(result i32)
-  lcl.get $cc
-  i64.load mem2:#cc.ccNo
-
-  lcl.get $cc
-  i32.load mem2:#cc.name.ptr
-
-  lcl.get $cc
-  i32.load mem2:#cc.name.len
-  string.copy mem2 mem1 "malloc"
+(@adapter implement (import "" "payWithCard_")
+  (param $cc i32)
+  (param $conn eqref)
+  (result i32)
   
-  lcl.get $cc
-  i16.load mem2:#cc.expires.mon
+  local.get $cc
+  i64.load {offset #cc.ccNo}
 
-  lcl.get $cc
-  i16.load mem2:#cc.expires.year
+  local.get $cc
+  i32.load {offset #cc.name.ptr}
+
+  local.get $cc
+  i32.load {offset #cc.name.len}
+  string.copy Mi:"mem2" Mx:"memx" "malloc"
   
-  lcl.get $cc
-  i16.load mem2:#cc.ccv
+  local.get $cc
+  i16.load_u {offset #cc.expires.mon}
+
+  local.get $cc
+  i16.load_u {offset #cc.expires.year}
+
+  local.get $cc
+  i16.load_u {offset #cc.ccv}
   
-  lcl.get $conn
+  local.get $conn
   call $payWithCard_
 )
 ```
+
+There would be different sequences for the adapter if the underlying ABI were different --
+for example, if structured data were passed as a pointer to a local copy for
+example.
 
 ## Paint a vector of points
 
@@ -823,7 +850,7 @@ sequence.
     (variant "pt"
       (tuple i32 i32))))
 
-(memory (export "mem1") 1)
+(memory (export "memx") 1)
 
 (func $vectorPaint_ (export ("" "vectorPaint_"))
   (param i32 i32) (result i32)
@@ -832,28 +859,38 @@ sequence.
   (param $pts (sequence @point))
   (result @returnCode)
   
-  lcl.get $pts
+  local.get $pts
   sequence.count
   allocate scale:8 "malloc"
   let array
-  lcl.get $pts
-  (for $ix $pt ; for ix,pt in pts
-    lcl.get $pt
-    field.get #0
-    lcl.get $array
-    lcl.get $ix
-    i32.index.store #0
-    lcl.get $pt
-    field.get #1
-    lcl.get $array
-    lcl.get $ix
-    i32.index.store #4
-  )
-  lcl.get $array
+  local.get $pts
+  sequence.loop $ix << for ix in pts
+    let $pt
+      local.get $pt
+      field.get #0
+      s32-to-i32
+      local.get $array
+      local.get $ix
+      i32.index.store #0
+      local.get $pt
+      field.get #1
+      s32-to-i32
+      local.get $array
+      local.get $ix
+      i32.index.store #4
+    end
+  end
+  local.get $array
   call $vectorPaint_
   i32-to-enum @returnCode
 )
 ```
+
+The `sequence.loop` pseudo instruction is used to iterate over a sequence with
+two bound variables: an integer index and an element which is bound to
+successive elements of the sequence.
+
+The `sequence.count` instruction returns the number of elements in a sequence.
 
 ### Import
 
@@ -868,21 +905,23 @@ The primary task in passing a vector of values is the construction of a `sequenc
   (result @returnCode))
   
 (@interface implement (import "" "vectorPaint_")
-  (param $points i32 $count i32)(result i32)
-  lcl.get $points
+  (param $points i32)
+  (param $count i32)
+  (result i32)
+  local.get $points
   let $ptr
   sequence.start @point
-  lcl.get $count
-  loop-for $vector
-    lcl.get $ptr
+  local.get $count
+  loop-for << loop for $count times
+    local.get $ptr
     i32.load #0
-    lcl.get $ptr
-    i32.load #1
+    i32-to-s32
+    local.get $ptr
+    i32.load #4
+    i32-to-s32
     create @point
     sequence.append
-    lcl.inc $ptr #sizeof(point)
-    lcl.decr $mx
-    br_if $vector
+    local.incr $ptr #sizeof(point)
   end
   sequence.complete
   call $vectorPaint
@@ -891,9 +930,13 @@ The primary task in passing a vector of values is the construction of a `sequenc
 ```
 
 The `sequence.start`, `sequence.append` and `sequence.complete` instructions are
-used to manage the generation of sequences. The `loop-for` pseudo instruction
-facilitates the adaptation process, but is a slight generalization of the core
-wasm `loop` pattern.
+used to manage the generation of sequences. 
+
+The `loop-for` pseudo instruction facilitates the adaptation process, but is a
+slight generalization of the core wasm `loop` pattern.
+
+The `local.incr` and `local.decr` instructions are used to implement the
+for-loop iteration.
 
 ### Adapter
 
@@ -903,50 +946,187 @@ able to fuse the generating loop with the iterating loop.
 The initial in-line version gives:
 
 ```
-(@adapter M1:"vectorPaint" as M2:"vectorPaint"
-  (param $points i32 $count i32)(result i32)
-  lcl.get $points
+(@adapter implement (import ("" "vectorPaint_"))
+  (param $points i32)
+  (param $count i32)
+  (result i32)
+  local.get $points
   let $ptr
   sequence.start @point
-  lcl.get $count
-  loop-for $vector
-    lcl.get $ptr
+  local.get $count
+  loop-for << loop for $count times
+    local.get $ptr
     i32.load #0
-    lcl.get $ptr
-    i32.load #1
+    i32-to-s32
+    local.get $ptr
+    i32.load #4
+    i32-to-s32
     create @point
     sequence.append
-    lcl.inc $ptr #sizeof(point)
-    lcl.decr $mx
-    br_if $vector
+    local.incr $ptr #sizeof(point)
   end
   sequence.complete
-  
-  let $pts
-  lcl.get $pts
-  sequence.count
-  allocate scale:8 "malloc"
-  let array
-  lcl.get $pts
-  (for $ix $pt ; for ix,pt in pts
-    lcl.get $pt
-    field.get #0
-    lcl.get $array
-    lcl.get $ix
-    i32.index.store #0
-    lcl.get $pt
-    field.get #1
-    lcl.get $array
-    lcl.get $ix
-    i32.index.store #4
-  )
-  lcl.get $array
-  call $vectorPaint_
+
+  let $pts << bind $pts to the sequence
+    local.get $pts
+    sequence.count
+    allocate scale:8 memx:"malloc"
+    let array
+    local.get $pts
+    sequence.loop $ix << for ix in pts
+      let $pt
+        local.get $pt
+        field.get #0
+        s32-to-i32
+        local.get $array
+        local.get $ix
+        i32.index.store memx:#0
+        local.get $pt
+        field.get #1
+        s32-to-i32
+        local.get $array
+        local.get $ix
+        i32.index.store memx:#4
+      end
+    end
+  end
+  local.get $array
+  call mx:$vectorPaint_
   i32-to-enum @returnCode
   enum-to-i32 @returnCode
 )
 ```
 
+The reasoning for the next loop fusion is that the first loop is generating the
+same sequence that the second loop is consuming. So, we fuse the loops by
+placing the body of the second loop immediately within the first loop -- after
+the construction of individual elements; and eliding the construction of the
+sequence itself:
+
+```
+(@adapter implement (import ("" "vectorPaint_"))
+  (param $points i32)
+  (param $count i32)
+  (result i32)
+  local.get $points
+  let $ptr
+
+  local.get $count
+  allocate scale:8 memx:"malloc"
+  let array
+
+  local.get $count
+  loop-for << loop for $count times
+    local.get $ptr
+    i32.load #0
+    i32-to-s32
+    local.get $ptr
+    i32.load #4
+    i32-to-s32
+    create @point
+
+    let $pt
+      local.get $pt
+      field.get #0
+      s32-to-i32
+      local.get $array
+      local.get $ix
+      i32.index.store memx:#0
+      local.get $pt
+      field.get #1
+      s32-to-i32
+      local.get $array
+      local.get $ix
+      i32.index.store memx:#4
+    end
+
+    local.incr $ptr #sizeof(point)
+  end
+
+  local.get $array
+  call mx:$vectorPaint_
+)
+```
+
+Similar reasoning allows us to combine the lifting into an `@point` record and
+its lowering:
+
+```
+(@adapter implement (import ("" "vectorPaint_"))
+  (param $points i32)
+  (param $count i32)
+  (result i32)
+  local.get $points
+  let $ptr
+
+  local.get $count
+  allocate scale:8 memx:"malloc"
+  let array
+
+  local.get $count
+  loop-for << loop for $count times
+    local.get $ptr
+    i32.load #0
+    i32-to-s32
+    s32-to-i32
+    local.get $array
+    local.get $ix
+    i32.index.store memx:#0
+    
+    local.get $ptr
+    i32.load #4
+    i32-to-s32
+    s32-to-i32
+    local.get $array
+    local.get $ix
+    i32.index.store memx:#4
+
+    local.incr $ptr #sizeof(point)
+  end
+
+  local.get $array
+  call mx:$vectorPaint_
+)
+```
+
+With some final cleanup:
+
+```
+(@adapter implement (import ("" "vectorPaint_"))
+  (param $points i32)
+  (param $count i32)
+  (result i32)
+  local.get $points
+  let $ptr
+
+  local.get $count
+  allocate scale:8 memx:"malloc"
+  let array
+
+  local.get $count
+  loop-for << loop for $count times
+    local.get $ptr
+    i32.load #0
+    local.get $array
+    local.get $ix
+    i32.index.store memx:#0
+    
+    local.get $ptr
+    i32.load #4
+    local.get $array
+    local.get $ix
+    i32.index.store memx:#4
+
+    local.incr $ptr #sizeof(point)
+  end
+
+  local.get $array
+  call mx:$vectorPaint_
+)
+```
+
+Note: The trickiest part of this is actually the handling of the counts. Perhaps
+a higher-level set of instructions will help clean this up.
 
 ## Colors
 
