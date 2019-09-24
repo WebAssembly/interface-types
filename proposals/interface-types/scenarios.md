@@ -912,7 +912,7 @@ The primary task in passing a vector of values is the construction of a `sequenc
   let $ptr
   sequence.start @point
   local.get $count
-  loop-for << loop for $count times
+  loop-for $ix << loop for $count times
     local.get $ptr
     i32.load #0
     i32-to-s32
@@ -954,7 +954,7 @@ The initial in-line version gives:
   let $ptr
   sequence.start @point
   local.get $count
-  loop-for << loop for $count times
+  loop-for $ix << loop for $count times
     local.get $ptr
     i32.load #0
     i32-to-s32
@@ -1016,7 +1016,7 @@ sequence itself:
   let array
 
   local.get $count
-  loop-for << loop for $count times
+  loop-for $ix << loop for $count times
     local.get $ptr
     i32.load #0
     i32-to-s32
@@ -1064,7 +1064,7 @@ its lowering:
   let array
 
   local.get $count
-  loop-for << loop for $count times
+  loop-for $ix << loop for $count times
     local.get $ptr
     i32.load #0
     i32-to-s32
@@ -1104,7 +1104,7 @@ With some final cleanup:
   let array
 
   local.get $count
-  loop-for << loop for $count times
+  loop-for $ix << loop for $count times
     local.get $ptr
     i32.load #0
     local.get $array
