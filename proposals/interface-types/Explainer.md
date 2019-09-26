@@ -289,7 +289,8 @@ value so that it can be read by both `memory-to-string` and the call to `free`.
 Unfortunately, there is a problem: anticipating the [exception handling]
 proposal, if an exception is thrown between the `call-export "greeting_"` and
 the `call-export "free"`, the memory will be leaked. With more complicated
-signatures, there can be many instructions in this range which can throw.
+exported function signatures, there can be many instructions in this range
+which can throw.
 
 To address this problem, as well as another problem described [below](#shared-nothing-linking-example),
 there is a `defer-call-export` instruction:
