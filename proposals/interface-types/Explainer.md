@@ -100,7 +100,8 @@ strings will become problematic if:
 
 With interface types, WASI functions can simply use the interface type `string`,
 allowing abstract string values to be created from linear memory, GC memory and
-host-string values, under the control of the calling module.
+host-string values, with the source and encoding specified explicitly by the
+calling module and extensible over time.
 
 
 ## Overview
