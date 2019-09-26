@@ -212,7 +212,7 @@ statement defines two things:
 * an [adapter function](#Overview) that implements `greeting`
 
 While the set of *instructions* in the body of the adapter function is
-completely different from the set of [core wasm instructions][Instructions],
+distinct from the set of [core wasm instructions][Instructions],
 the overall *structure* of the adapter module is the same as a core WebAssembly
 function. In particular:
 * The adapter function body is a (possibly nested) sequence of instructions.
