@@ -54,7 +54,7 @@ optimizing engine can then compile the declarative, statically-typed interface
 adapters into efficient stubs that call more-directly into the API's
 implementation.
 
-**Enabling "shared-nothing" linking of WebAssembly modules**
+**Enabling "shared-nothing linking" of WebAssembly modules**
 
 While WebAssembly intentionally supports [dynamic linking], in which multiple
 instances share the same memory and table, emulating [native dynamic linking],
@@ -161,9 +161,8 @@ other types and concepts are introduced.
 1. [Export returning string (statically allocated)](#export-returning-string-statically-allocated)
 1. [Export returning string (dynamically allocated)](#export-returning-string-dynamically-allocated)
 1. [Export receiving string](#export-receiving-string)
-1. [Lifting and lowering](#lifting-and-lowering)
 1. [Strings in imports](#strings-in-imports)
-1. [Shared-nothing linking example](#shared-nothing-linking-example)
+1. [Lifting, lowering and laziness](#lifting-lowering-and-laziness)
 1. [Strings with the GC proposal](#strings-with-the-GC-proposal)
 1. [Integers](#integers)
 1. [TODO](#TODO)
@@ -292,7 +291,7 @@ the `call-export "free"`, the memory will be leaked. With more complicated
 exported function signatures, there can be many instructions in this range
 which can throw.
 
-To address this problem, as well as another problem described [below](#shared-nothing-linking-example),
+To address this problem, as well as another problem described [below](#lifting-lowering-and-laziness) 
 there is a `defer-call-export` instruction:
 
 ```wasm
@@ -359,30 +358,6 @@ there are [ecosystem benefits](http://utf8everywhere.org/) to allowing only UTF-
 there may (one day) be practical reasons to support other encodings with either
 new instructions or adding a new flag bit to `string-to-memory`.
 
-### Lifting and Lowering
-
-With both `memory-to-string` and `string-to-memory`, we can see a
-pattern that will be repeated for all subsequent interface types: there is one
-set of **lifting adapter instructions** that "lift" core wasm value types into
-interface types and another set of **lowering adapter instructions** that
-"lower" interface types into core wasm value types. Indeed, both can be
-used in the same adapter function:
-
-```wasm
-  (func (export "frob") (param i32 i32) (result i32 i32)
-  (@interface func (export "frob") (param $str string) (result string)
-    arg.get $str
-    string-to-memory "mem" "malloc"
-    call-export "frob_"
-    defer-call-export "free"
-    memory-to-string "mem"
-  )
-```
-
-The normal type validation rules ensure that lifting and lowering are used
-appropriately and that, e.g., a `string` interface value isn't returned
-directly to wasm.
-
 ### Strings in imports
 
 The proposal also allows adapting imports as well. For example, to import a
@@ -413,15 +388,15 @@ it is defining an adapter function to implement the *core module* import with
 the given name and signature (in the example, `log_ : [i32,i32] → []`).
 
 This example uses the `memory-to-string` instruction that was previously shown
-in an export adapter function; now `memory-to-string` is lifting the argument
-of a `call-import` instead of lifting the return value of a `call-export`.
+in an export adapter function; now `memory-to-string` is applied to the
+*argument* of `call-import` instead of to the *return value* of `call-export`.
 Note also that there is no `defer-call-export "free"` instruction in this
 example. While it would be *possible* to do so, since the caller of the adapter
 is wasm code, it's simpler and potentially more efficient to let the caller
 worry about when to free the string.
 
 Using `string` as the return value of an import is symmetric to above,
-using the previously-introduced `string-to-memory` lowering instruction.
+using the previously-introduced `string-to-memory` instruction.
 
 ```wasm
 (module
@@ -437,69 +412,152 @@ using the previously-introduced `string-to-memory` lowering instruction.
 )
 ```
 
-### Shared-nothing linking example
+### Lifting, lowering and laziness
 
-With this 2×2 matrix of {lifting,lowering}×{import,export} covered, we can
-now see a complete example of how one wasm module can [shared-nothing link](#Motivation)
-to another wasm module. In this example, we start with one module providing a
-`get` function which takes a `string` key and returns the associated value:
+With `memory-to-string` and `string-to-memory`, we can see a pattern that will
+be repeated for all subsequent interface types: there is one set of **lifting
+adapter instructions** that "lift" core wasm values into interface-typed values
+and another set of **lowering adapter instructions** that "lower" interface-typed
+values into core wasm values. Moreover, the validation rules for adapter
+instructions ensure that the *only* way to consume an interface-typed value
+is with a lowering instruction.
+
+With the 2×2 matrix of {lifting,lowering}×{import,export} covered for `string`,
+we can now examine a complete example of [shared-nothing linking](#Motivation).
+On the provider side, we have an adapted module that exports a function `get`
+which takes and returns a string:
 
 ```wasm
 (module
-  (func (export "get_") (param i32 i32) (result i32 i32) ...)
+  (memory (export "mem1") 1)
+  (func (export "mem1Malloc") (param i32) (result i32) ...)
+  (func (export "mem1Free") (param i32) ...)
   ...
+  (func (export "get_") (param i32 i32) (result i32 i32) ...)
   (@interface func (export "get") (param $key string) (result string)
     arg.get $key
-    string-to-memory "mem" "malloc"
+    string-to-memory "mem1" "mem1Malloc"
     call-export "get_"
-    defer-call-export "free"
-    memory-to-string "mem"
+    defer-call-export "mem1Free"
+    memory-to-string "mem1"
   )
 )
 ```
 
-This module can be imported and used by a client module:
+On the client side, we have an adapted module that imports and calls `get`:
 
 ```wasm
 (module
-  (func (import "" "get_") (param i32 i32) (result i32 i32))
+  (memory (export "mem2") 1)
+  (func (export "mem2Malloc") (param i32) (result i32) ...)
   ...
+  (func $get_ (import "" "get_") (param i32 i32) (result i32 i32))
   (@interface func $get (import "kv-store" "get") (param string) (result string))
   (@interface implement (import "" "get_") (param $ptr i32) (param $len i32) (result i32 i32)
     arg.get $ptr
     arg.get $len
-    memory-to-string "mem"
+    memory-to-string "mem2"
     call-import $get
-    string-to-memory "mem" "malloc"
+    string-to-memory "mem2" "mem2Malloc"
+  )
+  (func $randomCode
+    ...
+    call $get_
+    ...
   )
 )
 ```
 
-If these adapter functions were compiled naively along with their containing
-module, then calling `get` would require temporary, probably garbage-collected,
-allocations for each `string` value. However, if the engine waits to compile
-adapter functions until the module is [instantiated][Instantiation]—so that it
-can see the adapter functions on both sides of an import call and match lifting
-with lowering instructions—then passing a string can be implemented without
-the intermediate allocation and a direct copy between linear memories.
+Looking at this example, an important question is: will the engine be able
+to copy directly between the caller's and callee's linear memories for the
+parameter and result strings? If `memory-to-string` had the same [eager evaluation]
+rules as all core wasm instructions, the answer would be "probaly not", because
+any unknown side effects between `memory-to-string` and `string-to-memory` (such
+as the calls to `mem1Malloc` and `mem2Malloc`) could force the engine to
+conservatively make intermediate copies.
 
-With this optimization in mind, we return to the `defer-call-export` instruction
-introduced [earlier](#export-returning-string-dynamically-allocated). If
-`defer-call-export` called `free` at the end of the callee adapter function,
-then this direct-copy optimization wouldn't be possible: the linear memory
-would have already been freed (and thus potentially mutated) by the time that
-`string-to-memory` called `malloc`; an intermediate copy would have to be
-made. Instead, just as the compiler considers the adapter function call pair
-as a single unit (as described above), so does `defer-call-export`, specifying
-that the deferred call happens at the end of the *outer* adapter function call.
-This would be peculiar in a general-purpose language with general function call
-nesting, but adapter functions are not general purpose and calls always occur
-in pairs (with host APIs being defined to have their own trivial or
-host-specified adapter functions).
+To solve this problem and categorically remove all such intermediate copies,
+lifting instructions are specified to be evaluated [lazily]. "Lazily" means 
+that `memory-to-string` doesn't read the source linear memory until the point
+at which the resulting `string` is lowered by `string-to-memory`. If the
+`string` result is never lowered, the source memory is never read. If the
+`string` is lowered multiple times, the source memory is read anew each time.
+
+While the implementation of lazy evaluation in a general-purpose programming
+language may add runtime overhead (e.g., requiring values to be represented
+by [thunks]), in the restricted, declarative setting of adapter functions, a
+pair of adapted modules can *always* be [partially evaluated] into a single
+core wasm module that contains no adapter instructions, using core wasm
+instructions like [`memory.copy`] to copy directly from memory to memory.
+This partial evaluation will be formalized as a set of provably-equivalent
+rewrite rules which engines can use to *predictably* optimize adapter
+function code into equivalent core wasm code (at instantiation time, when
+client and provider are known).
+
+For example, the above two adapted modules can be merged and rewritten into the
+following core wasm module (using the [multi-memory] proposal and the `let`
+blocks introduced by the [function references] proposal):
+
+```wasm
+(module
+  (memory $mem1 1)
+  (memory $mem2 1)
+  (func $mem1Malloc (param i32) (result i32) ...)
+  (func $mem1Free (param i32) ...)
+  (func $mem2Malloc (param i32) (result i32) ...)
+  ...
+  (func $validateUtf8 (param i32 i32) ... defined by Unicode spec ...)
+  ...
+  (func $get_ (param i32 i32) (result i32 i32) ...)
+  (func $get (param $keySrc i32) (param $keyLen i32) (result i32 i32)
+    (call $validateUtf8 (local.get $keySrc) (local.get $keyLen))
+    (call $mem1Malloc (local.get $keyLen))
+    let (local $keyDst i32) (result i32 i32)
+      (memory.copy "mem2" "mem1" (local.get $keyDst) (local.get $keySrc) (local.get $keyLen))
+
+      (call $get_ (local.get $keyDst) (local.get $keyLen))
+
+      let (local $valSrc i32) (local $valLen i32) (result i32 i32)
+        (call $validateUtf8 (local.get $keySrc) (local.get $keyLen))
+        (call $mem2Malloc (local.get $valLen))
+        let (local $valDst i32) (result i32 i32)
+          (memory.copy "mem1" "mem2" (local.get $valDst) (local.get $valSrc) (local.get $valLen))
+
+          (call $mem1Free (local.get $valSrc))
+
+          local.get $valDst
+          local.get $valLen
+        end
+      end
+    end
+  )
+  (func $randomCode
+    ...
+    call $get
+    ...
+  )
+)
+```
+
+Some interesting things to notice in this code are:
+* For the special case of strings, in addition to copying memory, UTF-8
+  validation is required at the interface boundary since the engine has no way
+  to know that the source bytes are already valid.
+* While the original client and provider modules needed to export memory and
+  various functions so that they can be used by the containing adapted module,
+  the rewritten module can keep these encapsulated and use module-internal
+  references.
+* The `defer-call-export` in the original adapted module has been
+  rewritten into a plain `call` at the end of the rewritten function scope.
+  `defer-call-export` can be thought of as a lazily-evaluated call, with
+  evaluation occurring at the end of its (post-rewrite) enclosing scope. Thus,
+  `defer-call-export` is naturally aligned with lazy lifting, ensuring that
+  memory is still allocated when it is read.
+
 
 ### Strings with the GC proposal
 
-In preceding [shared-nothing example](#shared-nothing-linking-example),
+In the preceding [shared-nothing example](#shared-nothing-linking-example),
 neither module exposes its linear memory or allocator functions to the outside
 world, keeping these encapsulated inside their respective adapted modules. In
 fact, with the future [GC] proposal, either module can transparently switch to
@@ -522,7 +580,7 @@ transparently rewritten to use GC:
 )
 ```
 
-This example also shows how having explicit adapter instructions allows new
+This example shows how having explicit adapter instructions allows new
 representation choices to be added over time. Moreover, the provider module is
 not required to make an all-or-nothing choice; individual parameters can use
 whichever available representation is best.
@@ -580,9 +638,7 @@ This rough list of topics is still to be added in subsequent PRs:
 * variants
 * closures and interaction with [function references]
 * re-importing/exporting core module import/exports
-* using core value types in adapter function signatures
-* importing an interface types with [type imports]
-* adapter functions can contain zero or >1 calls
+* importing an interface type with [type imports]
 * subtyping
 
 
@@ -670,6 +726,17 @@ include the myriad of numeric conversion operators. Similarly, the proposal can
 leverage existing and planned reference types ([`anyref`], [function references],
 [type imports], [GC]) to, e.g., define [abstract data types].
 
+### Why not just add adapter instructions to the core WebAssembly instruction set?
+
+The anticipated optimization strategy described [above](#lifting-lowering-and-laziness)
+relies on (1) declarative restrictions on adapter function code and (2) waiting
+to compile adapter functions until [instantiation]-time, when both sides of an
+import are known to the engine. In contrast, core WebAssembly code is not
+declarative and is often compiled/cached before instantiation-time. This
+conflict would result in unpredictable and irregular performance and force
+engines to make unnecessary heuristic tradeoffs. Additionaly, the semantic
+layering helps keep core wasm simple.
+
 
 
 [core spec]: https://webassembly.github.io/spec/core
@@ -686,6 +753,8 @@ leverage existing and planned reference types ([`anyref`], [function references]
 
 [Dynamic Linking]: https://webassembly.github.io/website/docs/dynamic-linking
 
+[`memory.copy`]: https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md#memorycopy-instruction
+
 [Reference Types]: https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md
 [`anyref`]: https://webassembly.github.io/reference-types/core/syntax/types.html#syntax-reftype
 [Function References]: https://github.com/WebAssembly/function-references/blob/master/proposals/function-references/Overview.md
@@ -696,6 +765,8 @@ leverage existing and planned reference types ([`anyref`], [function references]
 [Multi-value]: https://github.com/WebAssembly/multi-value/blob/master/proposals/multi-value/Overview.md
 [Block Validation]: https://webassembly.github.io/multi-value/core/valid/instructions.html#valid-block
 [Select Validation]: https://webassembly.github.io/reference-types/core/valid/instructions.html#valid-select
+
+[Multi-memory]: https://github.com/WebAssembly/multi-memory
 
 [Exception Handling]: https://github.com/WebAssembly/exception-handling/blob/master/proposals/Exceptions.md
 
@@ -749,3 +820,7 @@ leverage existing and planned reference types ([`anyref`], [function references]
 
 [native dynamic linking]: https://en.wikipedia.org/wiki/Dynamic_linker
 [abstract data types]: https://en.wikipedia.org/wiki/Abstract_data_type
+[eager evaluation]: https://en.wikipedia.org/wiki/Eager_evaluation
+[lazily]: https://en.wikipedia.org/wiki/Lazy_evaluation
+[thunks]: https://wiki.haskell.org/Thunk
+[partially evaluated]: https://en.wikipedia.org/wiki/Partial_evaluation
