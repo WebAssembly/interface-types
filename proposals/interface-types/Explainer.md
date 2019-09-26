@@ -413,7 +413,7 @@ it is defining an adapter function to implement the *core module* import with
 the given name and signature (in the example, `log_ : [i32,i32] → []`).
 
 This example uses the `memory-to-string` instruction that was previously shown
-in an export adapter functions; now `memory-to-string` is lifting the argument
+in an export adapter function; now `memory-to-string` is lifting the argument
 of a `call-import` instead of lifting the return value of a `call-export`.
 Note also that there is no `defer-call-export "free"` instruction in this
 example. While it would be *possible* to do so, since the caller of the adapter
