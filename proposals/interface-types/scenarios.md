@@ -1068,12 +1068,13 @@ needs to be released after the successful call.
   (param $dir string)
   (result (sequence string))
   
-  sequence.start string
+  local.get $dir
+  string-to-memory "memx" "malloc"
+  call $it_opendir_
+  
   iterator.start
-    local.get $dir
-    string-to-memory "memx" "malloc"
-    call $it_opendir_
-    iterator.for $it_loop
+    sequence.start string
+    iterator.while $it_loop
       call $it_readdir_
       dup
       eqz
@@ -1087,14 +1088,37 @@ needs to be released after the successful call.
     end
   end
 )
-
-(func (export "malloc")
-  (param $sze i32) (result i32)
-  ...
-)
+...
 
 ```
 
+The `sequence.start`, `sequence.append` and `sequence.complete` instructions are
+used to signal the creation of a sequence of values.
+
+In this particular example, the export adapter is not simply exporting an
+individual function but is packaging a combination of three functions that,
+together, implement the desired interface. This is an example of a situation
+where the C/C++ language is not itself capable of realizing a concept available
+in the interface type schema.
+
 The `$it_opendir_`, `$it_readdir_` and `$it_closedir_` functions are intended to
-denote variants of the standard posix functions that are tailored for use with
-the _iterator protocol_ that should form part of this specification.
+denote variants of the standard posix functions that have been slightly tailored
+to better fit the scenario.
+
+The `iterator.start`, `iterator.while` and `iterator.close` instructions model
+the equivalent of a `while` loop. The body of the `iterator.start` consists of
+three subsections: the initialization phase, an `iterator.while` instruction
+which embodies the main part of the iteration and the `iterator.close` whose
+body contains instructions that must be performed at the end of the loop.
+
+The `iterator.while` instruction repeats its internal block until specifically
+broken out of; it is effectively equivalent to the normal wasm `loop`
+instruction.
+
+### Import
+
+Consuming a sequence 
+
+```
+
+```
