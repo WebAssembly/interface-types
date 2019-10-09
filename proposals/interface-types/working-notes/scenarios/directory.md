@@ -26,7 +26,7 @@ needs to be released after the successful call.
 (@interface func (export "listing")
   (param $dir string)
   (result (sequence string))
-  
+
   local.get $dir
   string-to-memory "memx" "malloc"
   call $it_opendir_
@@ -48,7 +48,6 @@ needs to be released after the successful call.
   end
 )
 ...
-
 ```
 
 The `sequence.start`, `sequence.append` and `sequence.complete` instructions are
@@ -76,8 +75,169 @@ instruction.
 
 ## Import
 
-Consuming a sequence 
+Consuming a sequence involves running an iterator over the sequence, calling a
+local allocator function for each found element. This is driven by the
+`sequence.loop` control instruction which repeats its body once for each element
+of the sequence.
+
+In this example, we assume that the local `$startList` and `$appendToList`
+functions can be used to allocate a list structure to collect the strings from
+the directory listing. In addition, the `$mkStr` function takes two `i32`
+numbers and creates a local pair that can hold a string value.
 
 ```
+(func $listing_ (import ("" "listing_"))
+  (param i32 i32) (result i32)
 
+(@interface func $listing (import "" "listing")
+  (param @url string)
+  (result (sequence string)))
+
+(@interface implement (import "" "listing_")
+  (param $text i32)
+  (param $count i32)
+  (result i32)
+
+  local.get $text
+  local.get $count
+  memory-to-string
+
+  call $listing
+
+  call $startList
+  let $list
+
+  sequence.loop
+    string-to-memory "memi" "malloc"
+    call $mkStr
+    local.get $list
+    call $appendToList
+  end
+
+  local.get $list
+)
+```
+
+## Adapter
+
+The usual first step...
+
+```
+(@adapter implement (import "" "listing_")
+  (param $text i32)
+  (param $count i32)
+  (result i32)
+
+  local.get $text
+  local.get $count
+  memory-to-string
+
+  let $dir
+    local.get $dir
+    string-to-memory "memx" "malloc"
+    call $it_opendir_
+
+    iterator.start
+      sequence.start string
+      iterator.while $it_loop
+        call $it_readdir_
+        dup
+        eqz
+        br_if $it_loop
+        memory-to-string "memx"
+        sequence.append
+      end
+      iterator.close
+        call $it_closedir
+        sequence.complete
+      end
+    end
+  end
+
+  call $startList
+  let $list
+
+  sequence.loop
+    string-to-memory "memi" "malloc"
+    call $mkStr
+    local.get $list
+    call $appendToList
+  end
+
+  local.get $list
+)
+```
+
+After minor cleanup, and replacement of the `sequence.append` instruction with
+the body of the `sequence.loop`:
+
+```
+(@adapter implement (import "" "listing_")
+  (param $text i32)
+  (param $count i32)
+  (result i32)
+
+  local.get $text
+  local.get $count
+  string.copy "memi" "memx" "malloc"
+
+  local.get $count
+  call mx:$it_opendir_
+
+  call $startList
+  let $list
+
+  iterator.start
+    iterator.while $it_loop
+      call mx:$it_readdir_
+      dup
+      eqz
+      br_if $it_loop
+      memory-to-string "memx"
+      string-to-memory "memi" "malloc"
+      call $mkStr
+      local.get $list
+      call $appendToList
+    end
+    iterator.close
+      call mx:$it_closedir
+    end
+  end
+  local.get $list
+)
+```
+
+After cleanup and replacement of `iterator.*` instructions by their normal wasm
+counterparts:
+
+
+```
+(@adapter implement (import "" "listing_")
+  (param $text i32)
+  (param $count i32)
+  (result i32)
+
+  local.get $text
+  local.get $count
+  string.copy "memi" "memx" "malloc"
+
+  local.get $count
+  call mx:$it_opendir_
+
+  call $startList
+  let $list
+
+  loop $it_loop
+    call mx:$it_readdir_
+    dup
+    eqz
+    br_if $it_loop
+    string.copy "memx" "memi" "malloc"
+    call $mkStr
+    local.get $list
+    call $appendToList
+  end
+  call mx:$it_closedir
+  local.get $list
+)
 ```
