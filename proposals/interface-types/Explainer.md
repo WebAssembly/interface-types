@@ -557,7 +557,7 @@ Some interesting things to notice in this code are:
 
 ### Strings with the GC proposal
 
-In the preceding [shared-nothing example](#shared-nothing-linking-example),
+In the preceding [shared-nothing example](#lifting-lowering-and-laziness),
 neither module exposes its linear memory or allocator functions to the outside
 world, keeping these encapsulated inside their respective adapted modules. In
 fact, with the future [GC] proposal, either module can transparently switch to
