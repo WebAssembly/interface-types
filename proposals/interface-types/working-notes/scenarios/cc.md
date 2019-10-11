@@ -58,23 +58,23 @@ export, and passed by reference to the import.
   (param $card @cc)
   (param $session (resource @connection))
   (result boolean)
+
+  local.get $card
+  field.get #cc.ccNo   ;; access ccNo
+  u64-to-i64
+
+  local.get $card
+  field.get #cc.name
+  string-to-memory $mem1 "malloc"
   
   local.get $card
-  unpack @cc $ccNo $expires $ccv
-    local.get $ccNo
-    u64-to-i64
-    
-    local.get $expires
-    unpack @(record (u8) (u16))
-      $mon $year
-      local.get $mon
-      u8-to-i32
-      local.get $year
-      u16-to-i32
-      end
-    local.get $ccv
-    u16-to-i32
-  end
+  field.get #cc.expires.mon
+
+  local.get $card
+  field.get #cc.expires.year
+
+  local.get $card
+  field.get #cc.ccv
   
   local.get $session
   resource-to-eqref @connection
@@ -124,12 +124,12 @@ a pointer to a block of memory.
   local.get $cc
   i16.load_u {offset #cc.expires.year}
 
-  pack @(record (mon u16) (year u16))
+  create (record (mon u16) (year u16))
   
   local.get $cc
   i16.load_u {offset #cc.ccv}
 
-  pack @cc
+  create @cc
   
   local.get $conn
   eqref-to-resource @connection
