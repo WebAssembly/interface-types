@@ -8,10 +8,10 @@ Calling a two argument integer function, should result in effectively zero code.
 (@interface func (export "twizzle")
   (param $a1 s32)(param $a2 s32) (result s32)
   local.get $a1
-  s32-to-i23
+  s32-to-i32
   local.get $a2
   s32-to-i32
-  call "twizzle_"
+  call $twizzle_
   i32-to-s32
 )
 ```
@@ -44,7 +44,7 @@ The adapter code, that maps the import of `twozzle_` to its implementation as
   (param $b1 i32)(param $b2 i32) (result i32)
     local.get $b1
     local.get $b2
-    call Mx:"twizzle_"
+    call $Mx:twizzle_
 )
 ```
 
@@ -62,7 +62,7 @@ This should be viewed as the result of optimizations over an in-line substitutio
     let s32 (local $a2 s32)
       let s32 (local $a1 s32)
         local.get $a1
-        s32-to-i23
+        s32-to-i32
         local.get $a2
         s32-to-i32
         call Mx:"twizzle_"
@@ -111,7 +111,7 @@ subsequence gives:
     let s32 (local $a2 s32)
       local.get $b1
       i32-to-s32
-      s32-to-i23
+      s32-to-i32
       local.get $a2
       s32-to-i32
       call Mx:"twizzle_"
