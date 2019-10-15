@@ -31,42 +31,42 @@ information is realized as an `eqref` (an `anyref` that supports equality).
 
 In this scenario, we are assuming that the credit card information is passed by
 value (each field in a separate argument) to the internal implementation of the
-export, and passed by reference to the import.
+export, and passed by memory reference to the import.
 
 Lowering a record from interface types into its constituent components is
 handled by the `unpack` instruction.
 
 ```
-(@interface datatype @ccExpiry
+(@interface datatype $ccExpiry
   (record
     (field "mon" u8)
     (field "year" u16)
   )
 )
-(@interface datatype @cc 
+(@interface datatype $cc 
   (record "cc"
     (field "ccNo" u64)
     (field "name" string)
-    (field "expires" @ccExpiry)
+    (field "expires" (type $ccExpiry))
     (field "ccv" u16)
   )
 )
 
-(@interface typealias @connection eqref)
+(@interface typealias $connection eqref)
 
 (memory (export $memx) 1)
 
 (func $payWithCard_ (export ("" "payWithCard_"))
-  (param i64 i32 i32 i32 i32 i32 eqref) (result i32)
+  (param i64 i32 i32 i32 i32 i32 i64 eqref) (result i32)
 
 (@interface func (export "payWithCard")
-  (param $card @cc)
+  (param $card (type $cc))
   (param $amount s64)
-  (param $session (resource @connection))
+  (param $session (resource (type $connection)))
   (result boolean)
 
   local.get $card
-  unpack @cc.cc $ccNo $name $expires $ccv
+  unpack (type $cc.cc) $ccNo $name $expires $ccv
     local.get $ccNo   ;; access ccNo
     u64-to-i64
 
@@ -74,19 +74,19 @@ handled by the `unpack` instruction.
     string-to-memory "mem1" "malloc"
   
     local.get $expires
-    unpack @ccExpiry $mon $year
+    unpack (type $ccExpiry) $mon $year
       local.get $mon
       local.get $year
     end
     
-    local.get @ccv
+    local.get $ccv
   end
   
   local.get $amount
   i64-to-s64
   
   local.get $session
-  resource-to-eqref @connection
+  resource-to-eqref (type $connection)
   call $payWithCard_
   i32-to-enum boolean
 )
@@ -126,10 +126,10 @@ which is the complement to the `unpack` instruction used above.
 
 ```
 (func $payWithCard_ (import ("" "payWithCard_"))
-  (param i32 eqref) (result i32)
+  (param i32 s64 eqref) (result i32)
 
 (@interface func $payWithCard (import "" "payWithCard")
-  (param @cc s64 (resource @connection))
+  (param (type $cc) s64 (resource $connection))
   (result boolean))
   
 (@interface implement (import "" "payWithCard_")
@@ -155,18 +155,18 @@ which is the complement to the `unpack` instruction used above.
   local.get $cc
   i16.load_u {offset #cc.expires.year}
 
-  pack @ccExpiry
+  pack (type $ccExpiry)
   
   local.get $cc
   i16.load_u {offset #cc.ccv}
 
-  pack @cc
+  pack (type $cc)
   
   local.get $amnt
   i64-to-s64
   
   local.get $conn
-  eqref-to-resource @connection
+  eqref-to-resource (type $connection)
   
   call-import $payWithCard
   enum-to-i32 boolean
@@ -202,22 +202,22 @@ clarity, we initially get:
   local.get $cc
   i16.load_u {offset #cc.expires.year}
   
-  pack @ccExpiry
+  pack (type $ccExpiry)
   
   local.get $cc
   i16.load_u {offset #cc.ccv}
 
-  pack @cc
+  pack (type $cc)
   
   local.get $amnt
   i64-to-s64
   
   local.get $conn
-  eqref-to-resource @connection
+  eqref-to-resource (type $connection)
   
-  let $session (resource @connection)
-  let $card @cc
-    unpack @cc.cc $ccNo $name $expires $ccv
+  let $session (resource (type $connection))
+  let $card (type $cc)
+    unpack (type $cc.cc) $ccNo $name $expires $ccv
       local.get $ccNo   ;; access ccNo
       u64-to-i64
 
@@ -225,16 +225,16 @@ clarity, we initially get:
       string-to-memory "mem1" "malloc"
 
       local.get $expires
-      unpack @ccExpiry $mon $year
+      unpack (type $ccExpiry) $mon $year
         local.get $mon
         local.get $year
       end
     
-      local.get @ccv
+      local.get $ccv
     end
   
     local.get $session
-    resource-to-eqref @connection
+    resource-to-eqref (type $connection)
     call $payWithCard_
     i32-to-enum boolean
   end
@@ -250,7 +250,7 @@ different packed fields with their unpacked counterparts.
 
 ```
 (@adapter implement (import "" "payWithCard_")
-  (param @cc i32)
+  (param (type $cc) i32)
   (param $amnt i64)
   (param $conn eqref)
   (result i32)
