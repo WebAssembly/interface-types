@@ -33,17 +33,22 @@ In this scenario, we are assuming that the credit card information is passed by
 value (each field in a separate argument) to the internal implementation of the
 export, and passed by reference to the import.
 
+Lowering a record from interface types into its constituent components is
+handled by the `unpack` instruction.
+
 ```
+(@interface datatype @ccExpiry
+  (record
+    (field "mon" u8)
+    (field "year" u16)
+  )
+)
 (@interface datatype @cc 
   (record "cc"
-    (ccNo u64)
-    (name string)
-    (expires (record
-      (mon u8)
-      (year u16)
-      )
-    )
-    (ccv u16)
+    (field "ccNo" u64)
+    (field "name" string)
+    (field "expires" @ccExpiry)
+    (field "ccv" u16)
   )
 )
 
@@ -56,25 +61,29 @@ export, and passed by reference to the import.
 
 (@interface func (export "payWithCard")
   (param $card @cc)
+  (param $amount s64)
   (param $session (resource @connection))
   (result boolean)
 
   local.get $card
-  field.get #cc.ccNo   ;; access ccNo
-  u64-to-i64
+  unpack @cc.cc $ccNo $name $expires $ccv
+    local.get $ccNo   ;; access ccNo
+    u64-to-i64
 
-  local.get $card
-  field.get #cc.name
-  string-to-memory $mem1 "malloc"
+    local.get $name
+    string-to-memory "mem1" "malloc"
   
-  local.get $card
-  field.get #cc.expires.mon
-
-  local.get $card
-  field.get #cc.expires.year
-
-  local.get $card
-  field.get #cc.ccv
+    local.get $expires
+    unpack @ccExpiry $mon $year
+      local.get $mon
+      local.get $year
+    end
+    
+    local.get @ccv
+  end
+  
+  local.get $amount
+  i64-to-s64
   
   local.get $session
   resource-to-eqref @connection
@@ -88,22 +97,44 @@ export, and passed by reference to the import.
 )
 ```
 
+An `unpack type $x $y .. end` instruction sequence is equivalent to:
+
+```wat
+unpack type
+let $y
+  let $x
+    ..
+  end
+end
+```
+
+I.e., the effect of the `unpack` instruction is to take a record off the stack
+and replace it with the fields of the records, in field order.
+
+If local variables are specified in the instruction then this is viewed as
+syntactic sugar for unpacking the record and then binding the local variables to
+the fields of the record -- using the appropriate `let` instructions.
+
 ## Import
 
 In this example, we assume that the credit details are passed to the import by
 reference; i.e., the actual argument representing the credit card information is
 a pointer to a block of memory.
 
+Constructing a record from fields involves the use of a `pack` instruction;
+which is the complement to the `unpack` instruction used above.
+
 ```
 (func $payWithCard_ (import ("" "payWithCard_"))
   (param i32 eqref) (result i32)
 
 (@interface func $payWithCard (import "" "payWithCard")
-  (param @cc (resource @connection))
+  (param @cc s64 (resource @connection))
   (result boolean))
   
 (@interface implement (import "" "payWithCard_")
   (param $cc i32)
+  (param $amnt i64)
   (param $conn eqref)
   (result i32)
 
@@ -124,17 +155,20 @@ a pointer to a block of memory.
   local.get $cc
   i16.load_u {offset #cc.expires.year}
 
-  create (record (mon u16) (year u16))
+  pack @ccExpiry
   
   local.get $cc
   i16.load_u {offset #cc.ccv}
 
-  create @cc
+  pack @cc
+  
+  local.get $amnt
+  i64-to-s64
   
   local.get $conn
   eqref-to-resource @connection
   
-  call $payWithCard
+  call-import $payWithCard
   enum-to-i32 boolean
 )
 ```
@@ -147,6 +181,7 @@ clarity, we initially get:
 ```
 (@adapter implement (import "" "payWithCard_")
   (param $cc i32)
+  (param $amnt i64)
   (param $conn eqref)
   (result i32)
   
@@ -166,45 +201,42 @@ clarity, we initially get:
 
   local.get $cc
   i16.load_u {offset #cc.expires.year}
-
-  create (record (mon u16) (year u16))
+  
+  pack @ccExpiry
   
   local.get $cc
   i16.load_u {offset #cc.ccv}
 
-  create @cc
+  pack @cc
+  
+  local.get $amnt
+  i64-to-s64
   
   local.get $conn
   eqref-to-resource @connection
-
+  
   let $session (resource @connection)
   let $card @cc
+    unpack @cc.cc $ccNo $name $expires $ccv
+      local.get $ccNo   ;; access ccNo
+      u64-to-i64
 
-  local.get $card
-  field.get #cc.ccNo   ;; access ccNo
-  u64-to-i64
+      local.get $name
+      string-to-memory "mem1" "malloc"
 
-  local.get $card
-  field.get #cc.name
-  string-to-memory $mem1 "malloc"
+      local.get $expires
+      unpack @ccExpiry $mon $year
+        local.get $mon
+        local.get $year
+      end
+    
+      local.get @ccv
+    end
   
-  local.get $card
-  field.get #cc.expires.mon
-  u16-to-i32
-
-  local.get $card
-  field.get #cc.expires.year
-  u16-to-i32
-
-  local.get $card
-  field.get #cc.ccv
-  u16-to-i32
-  
-  local.get $session
-
-  resource-to-eqref @connection
-  call $payWithCard_
-  i32-to-enum boolean
+    local.get $session
+    resource-to-eqref @connection
+    call $payWithCard_
+    i32-to-enum boolean
   end
   end
   enum-to-i32 boolean
@@ -213,12 +245,13 @@ clarity, we initially get:
 
 With some assumptions (such as no aliasing, no writing to locals, no
 re-entrancy), we can propagate and inline the definitions of intermediates. This
-amounts to 'regular' inlining where we recurse into records and treat the fields
-of the record in an analogous fashion to arguments to the call.
+amounts to 'regular' inlining where we recurse into records and match up the
+different packed fields with their unpacked counterparts.
 
 ```
 (@adapter implement (import "" "payWithCard_")
-  (param $cc i32)
+  (param @cc i32)
+  (param $amnt i64)
   (param $conn eqref)
   (result i32)
   
@@ -230,19 +263,21 @@ of the record in an analogous fashion to arguments to the call.
 
   local.get $cc
   i32.load {offset #cc.name.len}
-  string.copy Mi:"mem2" Mx:"memx" "malloc"
+  string.copy "memi" "memx" "malloc"
   
   local.get $cc
   i16.load_u {offset #cc.expires.mon}
 
   local.get $cc
   i16.load_u {offset #cc.expires.year}
-
+  
   local.get $cc
   i16.load_u {offset #cc.ccv}
   
+  local.get $amnt
+
   local.get $conn
-  call $payWithCard_
+  call $Mx:payWithCard_
 )
 ```
 
