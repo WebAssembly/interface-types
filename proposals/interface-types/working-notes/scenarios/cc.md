@@ -10,7 +10,7 @@ example illustrates the use of nominal types and record types in adapter code.
 The signature of `payWithCard` as an interface type is:
 
 ```
-cc ::= cc{
+cc ::= {
   ccNo : u64;
   name : string;
   expires : {
@@ -44,7 +44,7 @@ handled by the `unpack` instruction.
   )
 )
 (@interface datatype $cc 
-  (record "cc"
+  (record
     (field "ccNo" u64)
     (field "name" string)
     (field "expires" (type $ccExpiry))
@@ -66,7 +66,7 @@ handled by the `unpack` instruction.
   (result boolean)
 
   local.get $card
-  unpack (type $cc.cc) $ccNo $name $expires $ccv
+  unpack (type $cc) $ccNo $name $expires $ccv
     local.get $ccNo   ;; access ccNo
     u64-to-i64
 
@@ -83,7 +83,7 @@ handled by the `unpack` instruction.
   end
   
   local.get $amount
-  i64-to-s64
+  s64-to-i64
   
   local.get $session
   resource-to-eqref (type $connection)
@@ -100,7 +100,7 @@ handled by the `unpack` instruction.
 An `unpack type $x $y .. end` instruction sequence is equivalent to:
 
 ```wat
-unpack type
+unpack <type>
 let $y
   let $x
     ..
@@ -139,26 +139,26 @@ which is the complement to the `unpack` instruction used above.
   (result i32)
 
   local.get $cc
-  i64.load {offset #cc.ccNo}
+  i64.load {offset #cc_ccNo}
   i64-to-u64
 
   local.get $cc
-  i32.load {offset #cc.name.ptr}
+  i32.load {offset #cc_name_ptr}
 
   local.get $cc
-  i32.load {offset #cc.name.len}
+  i32.load {offset #cc_name_len}
   memory-to-string "memi"
   
   local.get $cc
-  i16.load_u {offset #cc.expires.mon}
+  i16.load_u {offset #cc_expires_mon}
 
   local.get $cc
-  i16.load_u {offset #cc.expires.year}
+  i16.load_u {offset #cc_expires_year}
 
   pack (type $ccExpiry)
   
   local.get $cc
-  i16.load_u {offset #cc.ccv}
+  i16.load_u {offset #cc_ccv}
 
   pack (type $cc)
   
@@ -173,39 +173,42 @@ which is the complement to the `unpack` instruction used above.
 )
 ```
 
+The constants of the form `#cc_name_ptr` refer to offsets within the credit card
+structure as laid out in memory.
+
 ## Adapter
 
 Combining the import, exports and distributing the arguments, renaming `cc` for
 clarity, we initially get:
 
 ```
-(@adapter implement (import "" "payWithCard_")
+(func $Mi:payWithCard
   (param $cc i32)
   (param $amnt i64)
   (param $conn eqref)
   (result i32)
   
   local.get $cc
-  i64.load {offset #cc.ccNo}
+  i64.load {offset #cc_ccNo}
   i64-to-u64
 
   local.get $cc
-  i32.load {offset #cc.name.ptr}
+  i32.load {offset #cc_name_ptr}
 
   local.get $cc
-  i32.load {offset #cc.name.len}
+  i32.load {offset #cc_name_len}
   memory-to-string "memi"
   
   local.get $cc
-  i16.load_u {offset #cc.expires.mon}
+  i16.load_u {offset #cc_expires_mon}
 
   local.get $cc
-  i16.load_u {offset #cc.expires.year}
+  i16.load_u {offset #cc_expires_year}
   
   pack (type $ccExpiry)
   
   local.get $cc
-  i16.load_u {offset #cc.ccv}
+  i16.load_u {offset #cc_ccv}
 
   pack (type $cc)
   
@@ -217,7 +220,7 @@ clarity, we initially get:
   
   let $session (resource (type $connection))
   let $card (type $cc)
-    unpack (type $cc.cc) $ccNo $name $expires $ccv
+    unpack (type $cc) $ccNo $name $expires $ccv
       local.get $ccNo   ;; access ccNo
       u64-to-i64
 
@@ -249,30 +252,30 @@ amounts to 'regular' inlining where we recurse into records and match up the
 different packed fields with their unpacked counterparts.
 
 ```
-(@adapter implement (import "" "payWithCard_")
+(func $Mi:payWithCard
   (param (type $cc) i32)
   (param $amnt i64)
   (param $conn eqref)
   (result i32)
   
   local.get $cc
-  i64.load {offset #cc.ccNo}
+  i64.load {offset #cc_ccNo}
 
   local.get $cc
-  i32.load {offset #cc.name.ptr}
+  i32.load {offset #cc_name.ptr}
 
   local.get $cc
-  i32.load {offset #cc.name.len}
+  i32.load {offset #cc_name.len}
   string.copy "memi" "memx" "malloc"
   
   local.get $cc
-  i16.load_u {offset #cc.expires.mon}
+  i16.load_u {offset #cc_expires.mon}
 
   local.get $cc
-  i16.load_u {offset #cc.expires.year}
+  i16.load_u {offset #cc_expires.year}
   
   local.get $cc
-  i16.load_u {offset #cc.ccv}
+  i16.load_u {offset #cc_ccv}
   
   local.get $amnt
 
