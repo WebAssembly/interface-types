@@ -59,7 +59,7 @@ These instructions construct and deconstruct records into their constituent part
 
 | | | |
 | --- | ---- | ------ |
-| `pack` `&lt;typeref>` | .. F1 .. Fn => .. R | Remove top n elements from stack as fields in record |
+| `pack` &lt;typeref> | .. F1 .. Fn => .. R | Remove top n elements from stack as fields in record |
 | `unpack` &lt;typeref> | .. R => .. F1 .. Fn | Remove top element and replace with fields in order
 
 Note that the stack order of fields in `pack` and `unpack` is the same, with the
