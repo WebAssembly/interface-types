@@ -59,8 +59,8 @@ These instructions construct and deconstruct records into their constituent part
 
 | | | |
 | --- | ---- | ------ |
-| `pack` `<typeref>` | .. F1 .. Fn => .. R | Remove top n elements from stack as fields in record |
-| `unpack` <typeref> | .. R => .. F1 .. Fn | Remove top element and replace with fields in order
+| `pack` `&lt;typeref>` | .. F1 .. Fn => .. R | Remove top n elements from stack as fields in record |
+| `unpack` &lt;typeref> | .. R => .. F1 .. Fn | Remove top element and replace with fields in order
 
 Note that the stack order of fields in `pack` and `unpack` is the same, with the
 first field being the deepest on the stack.
@@ -71,8 +71,8 @@ These instructions refer to a type definition that is an enumeration type.
 
 | | | |
 | ----- | ----------- | ---------- |
-| `enum-to-i32` <Type> | .. <Enum> => .. `i32` | Map enumeration to `i32` |
-| `i32-to-enum` <Type> | .. `i32` => .. <Enum> | Map `i32` to enumeration |
+| `enum-to-i32` &lt;Type> | .. &lt;Enum> => .. `i32` | Map enumeration to `i32` |
+| `i32-to-enum` &lt;Type> | .. `i32` => .. &lt;Enum> | Map `i32` to enumeration |
 
 Note that enumeration types are considered equivalent up reordering. We likely
 need to rely on this to give a canonical value to each enumeration value.
@@ -85,8 +85,8 @@ region.
 
 | | | |
 | ----- | ----------- | ---------- |
-| `memory-to-string` <Mem> | .. `i32` `i32`=> .. `string` | Memory buffer (base count) to `string |
-| `string-to-memory` <Mem> <Malloc> | .. `string` => .. `i32` `i32` | Copy a string value into memory <Mem> using <Malloc> to allocate within that memory. |
+| `memory-to-string` &lt;Mem> | .. `i32` `i32`=> .. `string` | Memory buffer (base count) to `string |
+| `string-to-memory` &lt;Mem> &lt;Malloc> | .. `string` => .. `i32` `i32` | Copy a string value into memory &lt;Mem> using &lt;Malloc> to allocate within that memory. |
 
 Note that a memory-based string is assumed to represented as a pair of `i32`
 values: the first is the offset in the memory of the first byte and the second
