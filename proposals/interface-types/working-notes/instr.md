@@ -95,7 +95,41 @@ is the number of bytes in the string -- not the number of unicode characters.
 These instructions also reference a memory index literal -- which defaults to 0
 -- which indicates which memory the string is held in.
 
-### memory-to-array
+### Memory and Arrays
+
+#### Allocate and defer
+
+The `allocate` instruction is a form of marker instruction 
+
+```
+allocate &lt;malloc> &lt;mem> &lt;sz> instr-a* defer instr-d* end -->
+  label{ i32.const &lt;ptr> i32.const &lt;sz> instr-d* } instr-a* end
+```
+
+#### memory-to-array
+
+This is a block instruction, with two productions:
+
+```
+i32.const p i32.const 0 memory-to-array sz instr* end --> epsilon
+
+i32.const p i32.const c memory-to-array sz instr* end where c>0 -->
+  label{ i32.const (p+sz) i32.const (c-1) memory-to-array sz instr* end} i32.const p i32.const c instr* end
+```
+
+The interior instructions of the `memory-to-array` block are executed with the
+memory offset of the current array element and a count of the number of
+remaining elements in the array on the top of the stack.
+
+#### array-to-memory
+
+Like the `memory-to-array` instruction, this is a block instruction:
+
+```
+i32.const p i32.const e i32.const e &lt;array>.A array-to-memory sz instr* end --> epsilon
+i32.const p i32.const i i32.const e &lt;array>.A array-to-memory sz instr* end where i<e -->
+  label{ i32.const (p+sz) i32.const i32.const (i+1) i32.const e array-to-memory sz instr* end } i32.const p &lt;array>[i] instr* end
+```
 
 ### Sequences
 
