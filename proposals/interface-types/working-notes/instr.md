@@ -104,8 +104,8 @@ The `allocate` instruction is a block instruction which may include a defer;
 the allocated memory needs to be released.
 
 ```
-i32.const &lt;sz allocate &lt;malloc> &lt;mem> instr-a* defer instr-d* end -->
-  label{ i32.const &lt;ptr> i32.const &lt;sz> instr-d* } instr-a* end
+i32.const <sz allocate <malloc> <mem> instr-a* defer instr-d* end -->
+  label{ i32.const <ptr> i32.const <sz> instr-d* } instr-a* end
 ```
 
 >Note: still to show how this survives rewriting when paired with corresponding
@@ -117,7 +117,7 @@ The `release` instruction is a marker instruction that denotes a call to a
 corresponding `free` function.
 
 ```
-i32.const &lt;ptr> &lt;sz> release --> epsilon
+i32.const <ptr> <sz> release --> epsilon
 ```
 
 #### memory-to-array
@@ -140,9 +140,9 @@ remaining elements in the array on the top of the stack.
 Like the `memory-to-array` instruction, this is a block instruction:
 
 ```
-i32.const p i32.const e i32.const e &lt;array>.A array-to-memory sz instr* end --> epsilon
-i32.const p i32.const i i32.const e &lt;array>.A array-to-memory sz instr* end where i<e -->
-  label{ i32.const (p+sz) i32.const i32.const (i+1) i32.const e array-to-memory sz instr* end } i32.const p &lt;array>[i] instr* end
+i32.const p i32.const e i32.const e <array>.A array-to-memory sz instr* end --> epsilon
+i32.const p i32.const i i32.const e <array>.A array-to-memory sz instr* end where i<e -->
+  label{ i32.const (p+sz) i32.const i32.const (i+1) i32.const e array-to-memory sz instr* end } i32.const p <array>[i] instr* end
 ```
 
 ### Sequences
