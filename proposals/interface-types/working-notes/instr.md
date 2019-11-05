@@ -99,11 +99,25 @@ These instructions also reference a memory index literal -- which defaults to 0
 
 #### Allocate and defer
 
-The `allocate` instruction is a form of marker instruction 
+The `allocate` instruction is a block instruction which may include a defer;
+`allocate` with a defer block sets up a continuation that will be entered when
+the allocated memory needs to be released.
 
 ```
-allocate &lt;malloc> &lt;mem> &lt;sz> instr-a* defer instr-d* end -->
+i32.const &lt;sz allocate &lt;malloc> &lt;mem> instr-a* defer instr-d* end -->
   label{ i32.const &lt;ptr> i32.const &lt;sz> instr-d* } instr-a* end
+```
+
+>Note: still to show how this survives rewriting when paired with corresponding
+>lifting instructions.
+
+#### Release
+
+The `release` instruction is a marker instruction that denotes a call to a
+corresponding `free` function.
+
+```
+i32.const &lt;ptr> &lt;sz> release --> epsilon
 ```
 
 #### memory-to-array
