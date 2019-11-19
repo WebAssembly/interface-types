@@ -42,7 +42,7 @@ The numeric lifting and lowering instructions map between WASM's view of numbers
 | `s64-to-i32` | .. `s64` => .. `i32` | Map signed 64 bit to `i32` |
 | `s64-to-i32x` | .. `s64` => .. `i32` | Map signed 64 bit to `i32`, error if overflow |
 | `u64-to-i32` | .. `u64` => .. `i32` | Map unsigned 64 bit to `i32` |
-| `s64-to-i32x` | .. `u64` => .. `i32` | Map signed 64 bit to `i32`, error if overflow |
+| `u64-to-i32x` | .. `u64` => .. `i32` | Map unsigned 64 bit to `i32`, error if overflow |
 | `s8-to-i64` | .. `s8` => .. `i64` | Map signed 8 bit to `i64` |
 | `u8-to-i64` | .. `u8` => .. `i64` | Map unsigned 8 bit to `i64` |
 | `s16-to-i64` | .. `s16` => .. `i64` | Map signed 16 bit to `i64` |
