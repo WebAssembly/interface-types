@@ -27,8 +27,25 @@ The numeric lifting and lowering instructions map between WASM's view of numbers
 | `i64-to-s32` | .. `i64` => .. `s32` | Lift i64 to signed 32 bit integer |
 | `i64-to-s32x` | .. `i64` => .. `s32` | Lift i64 to signed 32 bit integer, error if more than 31 bits significant |
 | `i64-to-u32` | .. `i64` => .. `u32` | Lift i64 to unsigned 32 bit integer |
-| `i64-to-s64` | .. `i64` => .. `s64` | Lift i64 to signed 64 bit integer, with sign extension |
-| `i64-to-u64` | .. `i64` => .. `u64` | Lift i64 to unsigned 64 bit integer, zero filled |
+| `i64-to-s64` | .. `i64` => .. `s64` | Lift i64 to signed 64 bit integer |
+| `i64-to-u64` | .. `i64` => .. `u64` | Lift i64 to unsigned 64 bit integer |
+
+The small-step semantics of these instructions all follow a simple pattern. For non-erroring variants:
+
+```
+ixx.const N ixx-to-tyy --> tyy.const N' where N' is the result of coercing N to type tyy
+```
+
+the variants with an `x` suffix might raise an exception:
+
+```
+ixx.const N ixx-to-tyyx --> tyy.const N' where N' is the result of coercing N to type tyy and the result of tyy-to-ixx = N
+ixx.const N ixx-to-tyyx --> string.const "invalid coercion" raise
+```
+
+An arithmetic coercion is safe iff there is an inverse coercion that preserves the value.
+
+>Note: will need to adjust this to allow for a standard error exception
 
 
 | | | |
@@ -42,7 +59,7 @@ The numeric lifting and lowering instructions map between WASM's view of numbers
 | `s64-to-i32` | .. `s64` => .. `i32` | Map signed 64 bit to `i32` |
 | `s64-to-i32x` | .. `s64` => .. `i32` | Map signed 64 bit to `i32`, error if overflow |
 | `u64-to-i32` | .. `u64` => .. `i32` | Map unsigned 64 bit to `i32` |
-| `s64-to-i32x` | .. `u64` => .. `i32` | Map signed 64 bit to `i32`, error if overflow |
+| `u64-to-i32x` | .. `u64` => .. `i32` | Map unsigned 64 bit to `i32`, error if overflow |
 | `s8-to-i64` | .. `s8` => .. `i64` | Map signed 8 bit to `i64` |
 | `u8-to-i64` | .. `u8` => .. `i64` | Map unsigned 8 bit to `i64` |
 | `s16-to-i64` | .. `s16` => .. `i64` | Map signed 16 bit to `i64` |
@@ -97,38 +114,25 @@ These instructions also reference a memory index literal -- which defaults to 0
 
 ### Memory and Arrays
 
-#### Allocate and defer
-
-The `allocate` instruction is a block instruction which may include a defer;
-`allocate` with a defer block sets up a continuation that will be entered when
-the allocated memory needs to be released.
-
-```
-i32.const <sz allocate <malloc> <mem> instr-a* defer instr-d* end -->
-  label{ i32.const <ptr> i32.const <sz> instr-d* } instr-a* end
-```
-
->Note: still to show how this survives rewriting when paired with corresponding
->lifting instructions.
-
-#### Release
-
-The `release` instruction is a marker instruction that denotes a call to a
-corresponding `free` function.
-
-```
-i32.const <ptr> <sz> release --> epsilon
-```
 
 #### memory-to-array
 
-This is a block instruction, with two productions:
+The `memory-to-array` instruction is used to lift a block of memory --
+containing the elements of the array in a contiguous region -- into an `array`
+of the appropriate element type.
+
+This is a block instruction, with a complex set of productions defining its semantics:
+
 
 ```
-i32.const p i32.const 0 memory-to-array sz instr* end --> epsilon
+i32.const p i32.const c memory-to-array sz <type> instr* end -->
+  i32.const p i32.const c array<type>.const [] memory-to-array-loop sz instr* end
 
-i32.const p i32.const c memory-to-array sz instr* end where c>0 -->
-  label{ i32.const (p+sz) i32.const (c-1) memory-to-array sz instr* end} i32.const p i32.const c instr* end
+i32.const p i32.const 0 array<type>.const a memory-to-array-loop <type> sz instr* end --> array<type>.const a
+i32.const p i32.const c array<type>.const a memory-to-array-loop <type> sz instr* end where c>0 -->
+  label{ i32.const (p+sz) i32.const (c-1) array<type>.const a memory-to-array-loop sz instr* end} array<type>.const a i32.const p i32.const c instr* append-to-array end
+  
+array<type>.const a <type>.const b append-to-array --> array<type>.const a' where all i in 0..a.count a'[i]=a[i] and a'[a.count] = b 
 ```
 
 The interior instructions of the `memory-to-array` block are executed with the
@@ -136,6 +140,10 @@ memory offset of the current array element and a count of the number of
 remaining elements in the array on the top of the stack.
 
 #### array-to-memory
+
+The `array-to-memory` instruction maps an array to a region of memory. It must
+be the case that the region of memory given to the instruction is large enough
+to accomodate the contents of the array.
 
 Like the `memory-to-array` instruction, this is a block instruction:
 
@@ -147,16 +155,175 @@ i32.const p i32.const i i32.const e <array>.A array-to-memory sz instr* end wher
 
 ### Sequences
 
+TBD. Sequences are lifted and lowered via _iterators_. 
+
 ## Invoking
 
-### Call-import
+There are two primary instructions for invoking Interface Types functions:
+`call-function` and `invoke-method`. The latter models invoking a method on an
+object, or in Interface Type terms, invoking a method on an entity that has an
+interface.
 
-### Invoke Interface
+>Note. There are two technical differences between calling a function and
+>invoking a method: a method is effectively a function with a distinguished
+>first argument that is also an inseperable element of a set of methods.
+
+
+### Call Function
+
+The `call-function` instruction calls a function whose signature is expressed using the Interface Types schema.
+
+### Invoke Method
+
+The `invoke-method` instruction invokes a method on an object whose type is
+expressed in terms of an interface (not to be confused with Interface Types ...).
 
 ## Control flow
 
+### Case Handling
+
+The `case` instruction is used to map different variants of a type -- expressed
+as an _algebraic data type_. Case instructions may either be involved lifting
+code or in lowering code.
+
+```
+val case B1 .. Bk end --> vali Bi where Bi= block ti=>tr instr* end and val:ti
+```
+
+Here, `val` is assumed to be of an algebraic type; which means that its value is
+one of a fixed (k) set of variants. Let the actual variant of val have type `ti`
+where `i` is the ith variant and block Bi has multi-value signature ti=>tr. 
+
+The `case` instruction demultiplexes the variation of types into a particular
+variant type; and executes a block of instructions that assumes that a value of
+that type is on the stack.
+
+It is a validation error for the number of block choices to be different to the
+number of variants in the type of val; each sub-block should correspond to
+exactly one variant of the type of `val`.
+
+#### Vary Type
+
+The `vary` instruction lifts a value of a given type and _converts_ it into a
+variant of an algebraic type:
+
+```
+val:t vary i <type> --> val_i_:<type> 
+```
+where `i` is an index into the algebraic type &lt;type> whose variant type is `t`.
+
+
 ### Let variable definitions
+
+The `let` instruction is used to introduce local names for values that are on
+the stack. It is a block instruction, the local name is in scope for the
+contents of the block instruction.
+
+The `let` instruction is part of the 'function reference types' proposal but is
+reproduced here for completeness.
 
 ### Deferred execution
 
+In order to prevent memory leaks, especially when returning memory-allocated
+values from a call, it is necessary to be able to free allocated
+memory. However, the order of execution of a malloc/free pair does not always
+line up with the structure of an adapter. For example, allocated memory may need
+to remain valid until the caller of the export adapter has finished its work.
+
+To support this we have two instructions: the `defer-scope` instruction
+establishes a context -- and a scope -- within which a `deferred` block may be
+executed. Any `deferred` blocks entered within the scope are not actually
+executed until the last instruction within the `defere-scope` instruction has
+been executed.
+
+```
+defer-scope t=>t instr* end
+```
+and
+
+```
+deferred t_k_ instr* end
+```
+
+The semantics of `deferred` are that the instructions in its `finally` block are
+executed at the end of containing `defer-scope` instruction. In addition, the top _k_ elements of
+the stack are preserved and made available within the block when it is actually executed.
+
+There are two common use cases for deferred execution: when returning a memory
+allocated value to its caller and for ensuring that allocations are properly
+undone in the case of exception handling.
+
+
+```
+i32.const Sz
+call $malloc
+deferred (i32) ;; we want to keep the pointer to the allocated block
+  ...
+finally
+  call $free   ;; the top of the stack contains the address of the allocated block
+end
+```
+
+
+```
+val(n) deferred t(n) i* finally f* end -->
+  label {val(n) f* } val(n) i* ; br 1 end
+```
+
+
 ### Exceptions
+
+The exception handling of Interface Types adapters is separate from, but
+somewhat overlaid on, the exception types of core wasm.
+
+There are four elements of the architecture of exceptions in Interface Types:
+exception values, function signatures and instructions that raise and catch
+exceptions.
+
+#### Exception Values
+
+Exceptions are values whose type is expressed within the Interface Types schema.
+
+>Note: given the need to model different kinds of _exceptional_ cases, it is
+>likely that the type of an exception is expressed in terms of an algebraic data
+>type definition. This is not required by this proposal; it is quite possible
+>for exceptions to be modeled as integer values.
+
+#### Exception Signature
+
+An exception signature is a function or method signature that indicates what
+exceptions may be raised by the function. A function that may raise exceptions
+has a different signature to one that does not:
+
+```
+foo: (string)=>string raises fooException
+```
+
+There is no restriction on the type of exceptions a function may raise, except
+that a given function may only raise exceptions of that declared type. 
+
+In affect, a `raises` annotation on a function type signals that the function
+may either return a regular value or an exceptional value.
+
+#### Raising exceptions
+
+The `raise` instruction is used to signal that an exception is to be thrown. If
+the `raise` instruction occurs in the syntactic scope of a `catch-exception`
+block of the correct type then it amounts to a break to the handler part of that
+`catch-exception` block. If the exception is not in an appropriate syntactic
+scope then it must be the case that the adapter function is annotated with the
+type of the exception.
+
+```
+val:t; raise -->
+```
+
+
+#### Handling exceptions
+
+The `handle` block instruction is used to mark a scope where exceptions may be
+raised and handled.
+
+```
+handle instr* onexception t instr_t* end
+```
