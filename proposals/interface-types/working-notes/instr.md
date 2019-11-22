@@ -32,16 +32,14 @@ The numeric lifting and lowering instructions map between WASM's view of numbers
 
 The small-step semantics of these instructions all follow a simple pattern. For non-erroring variants:
 
-```
-ixx.const N ixx-to-tyy --> tyy.const N' where N' is the result of coercing N to type tyy
-```
+>`ixx.const` N `ixx-to-tyy` --> `tyy.const N'` where `N'` is the result of coercing `N` to type `tyy`
 
 the variants with an `x` suffix might raise an exception:
 
-```
-ixx.const N ixx-to-tyyx --> tyy.const N' where N' is the result of coercing N to type tyy and the result of tyy-to-ixx = N
-ixx.const N ixx-to-tyyx --> string.const "invalid coercion" raise
-```
+>`ixx.const N ixx-to-tyyx` --> `tyy.const N'` where `N'` is the result of coercing `N` to type `tyy` and the result of tyy-to-ixx = N
+
+>`ixx.const N ixx-to-tyyx` --> `string.const "invalid coercion" raise`
+
 
 An arithmetic coercion is safe iff there is an inverse coercion that preserves the value.
 
@@ -114,6 +112,11 @@ These instructions also reference a memory index literal -- which defaults to 0
 
 ### Memory and Arrays
 
+| | |
+| -- | -- |
+| `memory-to-array` | Lift a region of memory as contents of an array |
+| `array-to-memory` | Lower an erray by mapping contents to a region of memory |
+| `array.count` | Report the number of elements in the array |
 
 #### memory-to-array
 
@@ -153,9 +156,24 @@ i32.const p i32.const i i32.const e <array>.A array-to-memory sz instr* end wher
   label{ i32.const (p+sz) i32.const i32.const (i+1) i32.const e array-to-memory sz instr* end } i32.const p <array>[i] instr* end
 ```
 
+#### array.count
+
+The `array.count` instruction returns the number of elements in an array. 
+
+>val:array&lt;t> `array.count` --> `i32.const K` where there are `K` elements in the array.
+
 ### Sequences
 
-TBD. Sequences are lifted and lowered via _iterators_. 
+Sequences are lifted and lowered via _iterators_. 
+
+| | |
+| -- | -- |
+| `iterator.start` sequence&lt;type> | Start sequence processing |
+| `iterator.while` label | Loop block for each element of the sequence |
+| `iterator.close` | Terminate processing sequence |
+| `sequence.start` &lt;type> | Initiate construction of a sequence |
+| `sequence.append` | Append element to sequence |
+| `sequence.complete` | Finish creation of sequence |
 
 ## Invoking
 
@@ -168,10 +186,20 @@ interface.
 >invoking a method: a method is effectively a function with a distinguished
 >first argument that is also an inseperable element of a set of methods.
 
+| | |
+| -- | -- |
+| `call-function` Fn | Call Interface Types function |
+| `invoke-method` Nm | Invoke method Nm |
+
 
 ### Call Function
 
-The `call-function` instruction calls a function whose signature is expressed using the Interface Types schema.
+The `call-function` instruction calls a function whose signature is expressed
+using the Interface Types schema.
+
+>Note that if the called function raises an exception then we require (in the
+>binary format) a count which indicates which handler is the designated handler
+>for exceptions from the function.
 
 ### Invoke Method
 
@@ -213,6 +241,8 @@ val:t vary i <type> --> val_i_:<type>
 where `i` is an index into the algebraic type &lt;type> whose variant type is `t`.
 
 
+
+
 ### Let variable definitions
 
 The `let` instruction is used to introduce local names for values that are on
@@ -245,7 +275,7 @@ and
 deferred t_k_ instr* end
 ```
 
-The semantics of `deferred` are that the instructions in its `finally` block are
+The semantics of `deferred` are that the instructions in its block are
 executed at the end of containing `defer-scope` instruction. In addition, the top _k_ elements of
 the stack are preserved and made available within the block when it is actually executed.
 
@@ -258,18 +288,28 @@ undone in the case of exception handling.
 i32.const Sz
 call $malloc
 deferred (i32) ;; we want to keep the pointer to the allocated block
-  ...
-finally
   call $free   ;; the top of the stack contains the address of the allocated block
 end
 ```
 
+The `defer-scope` instruction sets up a defer context in the stack, whose role
+is to collect deferred code. When the body of the `defer-scope` reduces to value
+instructions then execute any deferred instructions:
 
 ```
-val(n) deferred t(n) i* finally f* end -->
-  label {val(n) f* } val(n) i* ; br 1 end
+defer-scope instr* end --> deferred{epsilon} instr* end
+
+deferred{instr*} valn end --> instr* valn
 ```
 
+The `deferred` instruction (which must be in the scope of a `deferred` context) appends instructions to that context
+
+```
+deferred{ d-instr* } ;L; val(n) deferred t(n) f* end ;R; end  --> deferred{ d-instr* val(n) f* } ;L; val(n) ;R; end
+```
+
+>Question: Do we want to allow the `deferred` instruction to push back an arbitrary number of defer contexts (ala br)?
+>Question: If we mark functions as throwing, should we also mark functions as deferring?
 
 ### Exceptions
 
@@ -318,12 +358,23 @@ type of the exception.
 val:t; raise -->
 ```
 
+>Note: the `raise` instruction embeds a count which is a _scope count_: the
+>number of handle contexts to unravel before finding the appropriate handler for
+>the exception. That handler must be declared to handle exceptions of the type _t_.
 
 #### Handling exceptions
 
 The `handle` block instruction is used to mark a scope where exceptions may be
-raised and handled.
+raised and handled. The `handle` instruction establishes a `handle` context
+which is used by the `raise` instruction:
 
 ```
-handle instr* onexception t instr_t* end
+handle instr* onexception t instr_t* end --> handle{ instr_t* } instr* end
+handle{instr_t*} val(n) end --> val(n)
 ```
+
+There are actually two potential handle scopes: if a function is declared to
+throw an exception of some type then that also establishes a handle scope for
+exceptions of that type.
+
+>Note: need more detail here.
