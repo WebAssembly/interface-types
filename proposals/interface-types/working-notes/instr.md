@@ -115,7 +115,7 @@ These instructions also reference a memory index literal -- which defaults to 0
 | | |
 | -- | -- |
 | `memory-to-array` | Lift a region of memory as contents of an array |
-| `array-to-memory` | Lower an erray by mapping contents to a region of memory |
+| `array-to-memory` | Lower an array by mapping contents to a region of memory |
 | `array.count` | Report the number of elements in the array |
 
 #### memory-to-array
