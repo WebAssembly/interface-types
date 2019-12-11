@@ -12,38 +12,37 @@ The numeric lifting and lowering instructions map between WASM's view of numbers
 | `i32-to-s8x` | .. `i32` => .. `s8` | Lift least 8 bits as signed 8 bit integer, error if more than 7 bits significant  |
 | `i32-to-u8` | .. `i32` => .. `u8` | Lift least significant 8 bits as unsigned 8 bit integer |
 | `i32-to-s16` | .. `i32` => .. `s16` | Lift least significant 16 bits as signed 16 bit integer |
-| `i32-to-s16x` | .. `i32` => .. `s16` | Lift least significant 16 bits as signed 16 bit integer, error if more than 15 bits significant  |
+| `i32-to-s16x`Lbl | .. `i32` => .. `s16` | Lift least significant 16 bits as signed 16 bit integer, break Lbl if more than 15 bits significant  |
 | `i32-to-u16` | .. `i32` => .. `u16` | Lift least significant 16 bits as unsigned 16 bit integer |
 | `i32-to-s32` | .. `i32` => .. `s32` | Lift i32 to signed 32 bit integer |
 | `i32-to-u32` | .. `i32` => .. `u32` | Lift i32 to unsigned 32 bit integer |
 | `i32-to-s64` | .. `i32` => .. `s64` | Lift i32 to signed 64 bit integer, with sign extension |
 | `i32-to-u64` | .. `i32` => .. `u64` | Lift i32 to unsigned 64 bit integer, zero filled |
 | `i64-to-s8` | .. `i64` => .. `s8` | Lift least significant 8 bits as signed 8 bit integer |
-| `i64-to-s8x` | .. `i64` => .. `s8` | Lift ls 8 bits as signed 8 bit integer, error if more than 7 bits significant  |
+| `i64-to-s8x` Lbl | .. `i64` => .. `s8` | Lift ls 8 bits as signed 8 bit integer, break if more than 7 bits significant  |
 | `i64-to-u8` | .. `i64` => .. `u8` | Lift least significant 8 bits as unsigned 8 bit integer |
 | `i64-to-s16` | .. `i64` => .. `s16` | Lift least significant 16 bits as signed 16 bit integer |
-| `i64-to-s16x` | .. `i64` => .. `s16` | Lift least significant 16 bits as signed 16 bit integer, error if more than 15 bits significant  |
+| `i64-to-s16x` Lbl | .. `i64` => .. `s16` | Lift least significant 16 bits as signed 16 bit integer, break if more than 15 bits significant  |
 | `i64-to-u16` | .. `i64` => .. `u16` | Lift least significant 16 bits as unsigned 16 bit integer |
 | `i64-to-s32` | .. `i64` => .. `s32` | Lift i64 to signed 32 bit integer |
-| `i64-to-s32x` | .. `i64` => .. `s32` | Lift i64 to signed 32 bit integer, error if more than 31 bits significant |
+| `i64-to-s32x` Lbl | .. `i64` => .. `s32` | Lift i64 to signed 32 bit integer, break if more than 31 bits significant |
 | `i64-to-u32` | .. `i64` => .. `u32` | Lift i64 to unsigned 32 bit integer |
 | `i64-to-s64` | .. `i64` => .. `s64` | Lift i64 to signed 64 bit integer |
 | `i64-to-u64` | .. `i64` => .. `u64` | Lift i64 to unsigned 64 bit integer |
 
-The small-step semantics of these instructions all follow a simple pattern. For non-erroring variants:
+The small-step semantics of these instructions all follow a simple pattern. For
+non-erroring variants:
 
 >`ixx.const` N `ixx-to-tyy` --> `tyy.const N'` where `N'` is the result of coercing `N` to type `tyy`
 
-the variants with an `x` suffix might raise an exception:
+the variants with an `x` suffix may break to an outer block if the coercion fails:
 
->`ixx.const N ixx-to-tyyx` --> `tyy.const N'` where `N'` is the result of coercing `N` to type `tyy` and the result of tyy-to-ixx = N
+>`ixx.const N ixx-to-tyyx` Lbl --> `tyy.const N'` where `N'` is the result of coercing `N` to type `tyy` and the result of tyy-to-ixx = N
 
->`ixx.const N ixx-to-tyyx` --> `string.const "invalid coercion" raise`
+>`ixx.const N ixx-to-tyyx` Lbl --> br Lbl
 
-
-An arithmetic coercion is safe iff there is an inverse coercion that preserves the value.
-
->Note: will need to adjust this to allow for a standard error exception
+An arithmetic coercion is safe iff there is an inverse coercion that preserves
+the value.
 
 
 | | | |
@@ -55,9 +54,9 @@ An arithmetic coercion is safe iff there is an inverse coercion that preserves t
 | `s32-to-i32` | .. `s32` => .. `i32` | Map signed 32 bit to `i32` |
 | `u32-to-i32` | .. `u32` => .. `i32` | Map unsigned 32 bit to `i32` |
 | `s64-to-i32` | .. `s64` => .. `i32` | Map signed 64 bit to `i32` |
-| `s64-to-i32x` | .. `s64` => .. `i32` | Map signed 64 bit to `i32`, error if overflow |
+| `s64-to-i32x` Lbl | .. `s64` => .. `i32` | Map signed 64 bit to `i32`, break if overflow |
 | `u64-to-i32` | .. `u64` => .. `i32` | Map unsigned 64 bit to `i32` |
-| `u64-to-i32x` | .. `u64` => .. `i32` | Map unsigned 64 bit to `i32`, error if overflow |
+| `u64-to-i32x` Lbl | .. `u64` => .. `i32` | Map unsigned 64 bit to `i32`, break if overflow |
 | `s8-to-i64` | .. `s8` => .. `i64` | Map signed 8 bit to `i64` |
 | `u8-to-i64` | .. `u8` => .. `i64` | Map unsigned 8 bit to `i64` |
 | `s16-to-i64` | .. `s16` => .. `i64` | Map signed 16 bit to `i64` |
@@ -125,7 +124,6 @@ containing the elements of the array in a contiguous region -- into an `array`
 of the appropriate element type.
 
 This is a block instruction, with a complex set of productions defining its semantics:
-
 
 ```
 i32.const p i32.const c memory-to-array sz <type> instr* end -->
@@ -197,14 +195,11 @@ interface.
 The `call-function` instruction calls a function whose signature is expressed
 using the Interface Types schema.
 
->Note that if the called function raises an exception then we require (in the
->binary format) a count which indicates which handler is the designated handler
->for exceptions from the function.
-
 ### Invoke Method
 
 The `invoke-method` instruction invokes a method on an object whose type is
-expressed in terms of an interface (not to be confused with Interface Types ...).
+expressed in terms of a service type.
+
 
 ## Control flow
 
@@ -238,10 +233,9 @@ variant of an algebraic type:
 ```
 val:t vary i <type> --> val_i_:<type> 
 ```
-where `i` is an index into the algebraic type &lt;type> whose variant type is `t`.
 
-
-
+where `i` is an index into the algebraic type &lt;type> whose variant type is
+`t`.
 
 ### Let variable definitions
 
@@ -283,7 +277,6 @@ There are two common use cases for deferred execution: when returning a memory
 allocated value to its caller and for ensuring that allocations are properly
 undone in the case of exception handling.
 
-
 ```
 i32.const Sz
 call $malloc
@@ -311,70 +304,86 @@ deferred{ d-instr* } ;L; val(n) deferred t(n) f* end ;R; end  --> deferred{ d-in
 >Question: Do we want to allow the `deferred` instruction to push back an arbitrary number of defer contexts (ala br)?
 >Question: If we mark functions as throwing, should we also mark functions as deferring?
 
-### Exceptions
+### Exceptions and Errors
 
-The exception handling of Interface Types adapters is separate from, but
-somewhat overlaid on, the exception types of core wasm.
+While it is critical that API functions may be _allowed_ to fail; the particular
+constraints and opportunities of specifying interoperable APIs do not require a
+special feature for throwing and catching exceptions.
 
-There are four elements of the architecture of exceptions in Interface Types:
-exception values, function signatures and instructions that raise and catch
-exceptions.
+We propose a scheme for handling failed computations based on other elements of
+Interface Types; specifically: a standard `either` type defined as an algebraic
+type.
 
 #### Exception Values
 
-Exceptions are values whose type is expressed within the Interface Types schema.
+The standard `either` type denotes values that can have one of two _shapes_: a
+regular shape and an alternate shape.
 
->Note: given the need to model different kinds of _exceptional_ cases, it is
->likely that the type of an exception is expressed in terms of an algebraic data
->type definition. This is not required by this proposal; it is quite possible
->for exceptions to be modeled as integer values.
-
-#### Exception Signature
-
-An exception signature is a function or method signature that indicates what
-exceptions may be raised by the function. A function that may raise exceptions
-has a different signature to one that does not:
+The type `either` is defined as though it were defined using:
 
 ```
-foo: (string)=>string raises fooException
+(@interface datatype (type $either a b)
+  (oneof
+    (variant @normal a)
+    (variant @alternate b)))
 ```
-
-There is no restriction on the type of exceptions a function may raise, except
-that a given function may only raise exceptions of that declared type. 
-
-In affect, a `raises` annotation on a function type signals that the function
-may either return a regular value or an exceptional value.
-
-#### Raising exceptions
-
-The `raise` instruction is used to signal that an exception is to be thrown. If
-the `raise` instruction occurs in the syntactic scope of a `catch-exception`
-block of the correct type then it amounts to a break to the handler part of that
-`catch-exception` block. If the exception is not in an appropriate syntactic
-scope then it must be the case that the adapter function is annotated with the
-type of the exception.
+Or, in abstract syntax notation:
 
 ```
-val:t; raise -->
+either<a,b> ::= normal a | alternate b
 ```
 
->Note: the `raise` instruction embeds a count which is a _scope count_: the
->number of handle contexts to unravel before finding the appropriate handler for
->the exception. That handler must be declared to handle exceptions of the type _t_.
+The `either` type is typically used in the return type of a function signature
+to indicate that it may either return normally or with some form of exception.
 
-#### Handling exceptions
+#### Either Signature
 
-The `handle` block instruction is used to mark a scope where exceptions may be
-raised and handled. The `handle` instruction establishes a `handle` context
-which is used by the `raise` instruction:
+If an exported function may raise webAssembly exceptions, its Interface Type
+signature should reflect that by returning an `either` type.
+
+I.e., the core webAssembly function with signature
 
 ```
-handle instr* onexception t instr_t* end --> handle{ instr_t* } instr* end
-handle{instr_t*} val(n) end --> val(n)
+(param "x" i32) (returns f64)
 ```
 
-There are actually two potential handle scopes: if a function is declared to
-throw an exception of some type then that also establishes a handle scope for
-exceptions of that type.
+which might signal an exception that is equivalent to an errorcode; should have
+as its Interface Type counterpart:
 
->Note: need more detail here.
+```
+(param "x" s32) (returns (type $either f64 (type $errCode)))
+```
+
+#### Lifting Exports with Exceptions
+
+Actually signaling that something has _gone wrong_ with a call is realized with
+a combination of an exception handler and a `vary` instruction.
+
+```
+try
+  call $local
+  vary $normal
+catch
+  vary $alternate
+  return
+end
+```
+
+The `$normal` variant signals a normal return from the core WASM function; the
+`$alternate` form takes the exception raised and lifts it into an `either` type.
+
+#### Handling Alternate Cases
+
+The complement to `vary` is the `case` instruction, which decomposes variants
+into different cases.
+
+```
+call-function $imported
+case
+  block $normal
+  end
+  block $alternate
+    throw $imp_ex
+  end
+end
+```
