@@ -100,7 +100,7 @@ region.
 | | | |
 | ----- | ----------- | ---------- |
 | `memory-to-string` &lt;Mem> | .. `i32` `i32`=> .. `string` | Memory buffer (base count) to `string |
-| `string-to-memory` &lt;Mem> &lt;Malloc> | .. `string` => .. `i32` `i32` | Copy a string value into memory &lt;Mem> using &lt;Malloc> to allocate within that memory. |
+| `string-to-memory` &lt;Mem> | .. `string` `i32` `i32` => .. | Copy a string value into memory &lt;Mem> using region of memory denoted by `i32` start and `i32` # of bytes. |
 
 Note that a memory-based string is assumed to represented as a pair of `i32`
 values: the first is the offset in the memory of the first byte and the second
@@ -257,7 +257,7 @@ to remain valid until the caller of the export adapter has finished its work.
 To support this we have two instructions: the `defer-scope` instruction
 establishes a context -- and a scope -- within which a `deferred` block may be
 executed. Any `deferred` blocks entered within the scope are not actually
-executed until the last instruction within the `defere-scope` instruction has
+executed until the last instruction within the `defer-scope` instruction has
 been executed.
 
 ```
