@@ -17,7 +17,7 @@ specified in a [custom section] and this feature can be polyfilled using the
 1. [Overview](#overview)
 1. [Walkthrough](#walkthrough)
 1. [Web IDL integration](#web-idl-integration)
-1. [FAQ](#FAQ)
+1. [FAQ](#faq)
 
 
 ## Motivation
@@ -161,6 +161,7 @@ in the following diagram:
 1. [Strings with the GC proposal](#strings-with-the-gc-proposal)
 1. [Integers in Interface Types](#integers-in-interface-types)
 1. [Processing Credit Card Payments](#processing-credit-card-payments)
+1. [Fetching Urls](#fetching-urls)
  
 Our walkthrough starts by considering how to access a mythical function that
 counts the number of Unicode codepoints in a string. Later, we extend this
@@ -287,7 +288,7 @@ There is a lot going on here, so we will take this slowly:
 1. Unlike normal webAssembly functions, the type signature of this adapter
    function is expressed using types from the Interface Types schema: it takes
    an `integer` and returns an `u32`.
-1. The `string.size` instruction is a special Interface Types instruction that
+1. The `string.size` instruction is a special adapter instruction that
    takes a `string` value and returns the number of bytes needed to represent
    the string -- assuming a UTF-8 encoding scheme. This is used to allocate a
    chunk of memory -- with the call to `$malloc` for the string.
@@ -432,7 +433,7 @@ strictly core webAssembly features:[^assuming certain non-MVP capabilities such 
     local.get $vr
     local.get $tgt
     local.get $vrLen
-    block.copy "memi" "memx"
+    memory.copy "memi" "memx"
     call $getenv_impl
     let (local $res i32 $resLen i32)
     local.get $resLen
@@ -441,7 +442,7 @@ strictly core webAssembly features:[^assuming certain non-MVP capabilities such 
       local.get $res
       local.get $resi
       local.get $resLen
-      block.copy "memx" "memi"
+      memory.copy "memx" "memi"
       local.get $resi
       local.get $resLen
     end
@@ -453,7 +454,7 @@ strictly core webAssembly features:[^assuming certain non-MVP capabilities such 
 
 The combined adapter operates by:
 
-1. first of all copying the input string argument from one memory (`"memi") to
+1. first of all copying the input string argument from one memory (`"memi"`) to
    the memory associated with the implementation of `getenv_impl` i.e., memory
    (`"memx"`);
 1. invoking `getenv_impl`;
@@ -803,6 +804,120 @@ The `eqref-to-service` instruction casts an `anyref` (specifically one that
 supports equality -- an `eqref`)[^Quiz: Why does it need to be an `eqref`?] to
 an entity that implements the `ccService` service type.
 
+### Fetching Urls
+
+Many APIs, including many web APIs, involve some form of asynchronous
+callbacks. For example, this version of a fetch Url API includes a callback
+which is invoked whenever 'something interesting' happens on the session:
+
+```wasm
+fetch:(string,(statusCode,string)=>returnCode)=>returnCode
+```
+
+Using the `fetch` API means that you will be both importing the `fetch`
+functionality and exporting your own callback function.
+
+This example also allows us to show how enumerations can be represented in
+Interface Types; however, perhaps the main concept referenced is the typed
+function reference and closures -- which is part of the [function
+references][Function References] proposal.
+
+The import preamble for `fetch` includes the regular core webAssembly import
+`fetch_` and a type specification for the `fetch` function as an Interface Types
+function:
+
+```wasm
+(func $fetch_ (import "" "fetch_")
+  (param i32 i32 (ref (func (param i32 i32)(result i32))))
+  (result i32))
+  
+(@interface func (import "fetch")
+  (param string (ref (func (param (type $statusCode) string)
+                           (result (type $returnCode)))))
+  (result (type $returnCode)))
+```
+
+The two enumerated types `returnCode` and `statusCode` are defined using `@interface` type statements:
+
+```wasm
+(@interface datatype $returnCode
+  (oneof
+    (enum "ok")
+    (enum "bad")))
+    
+(@interface datatype $statusCode
+  (oneof
+    (enum "fail")
+    (enum "havedata")
+    (enum "eof")))
+```
+
+Although we are importing a call to `fetch`, we are exporting our own
+callback. We construct an export adapter for the callback separately from the
+import adapter for `fetch`.
+
+```wasm
+(@interface func $cbEntry
+  (param $callBk (ref (func (param i32 i32 i32) (result i32))))
+  (param $status (type $statusCode))
+  (param $text string)
+  (result (type $returnCode))
+  local.get $status
+  enum-to-i32 (type $statusCode)
+  local.get $text
+  string.size
+  call $malloci
+  let (local $tgt i32)
+    deferred (i32)
+      call $freei
+    end
+    local.get $text
+    local.get $tgt
+    string-to-memory "memi"
+  end
+  local.get $callbk
+  call-indirect
+  i32-to-enum (type $returnCode)
+)
+```
+
+This adapter is not a normal adapter function -- for two reasons: it
+has a mixed type signature: some arguments have core webAssembly types and some
+have types from the Interface Types schema; secondly it is not actually exported
+as a named function.
+
+In most cases the actual callback function being exported is not likely
+to be fixed -- we have to allow arbitrary core webAssembly functions (of the
+appropriate type) to be passed to `fetch`.
+
+This is handled in the callback export adapter by adding the core-webAssembly
+callback function as an extra argument to the callback adapter and then we will
+use `func.bind` in the main import adapter to bind this function to the extra
+argument:
+
+```wasm
+(@interface implement (import "" "fetch_")
+  (param $url i32)
+  (param $len i32)
+  (param $callb (ref (func (param i32 i32)(result i32))))
+  (result i32)
+  local.get $url
+  local.get $len
+  memory-to-string "memi"
+  local.get $callb
+  func.ref $cbEntry
+  func.bind (func (param i32 i32 i32) (result i32))
+  call-import $fetch
+  enum-to-i32 @returnCode
+)
+```
+
+The other side of this coin -- where a webAssembly module wants to export a
+`fetch` capability -- is essentially a mirror image of the import scenario:
+there is an export adapter for the main `fetch` function and an import adapter
+to allow the core webAssembly implementation to call the callback.
+
+
 
 ### TODO
 
@@ -810,7 +925,6 @@ This rough list of topics is still to be added in subsequent PRs:
 * bool
 * sequences (esp. considering interactions with defer)
 * variants
-* closures and interaction with [function references]
 * re-importing/exporting core module import/exports
 * importing an interface type with [type imports]
 * subtyping
