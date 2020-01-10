@@ -7,9 +7,9 @@ the Interface Types specification.
 ## Introduction
 
 A key motivation for Interface Types is the semantic gap between the
-expressivitiy of core webAssembly and the needs of API designers and high-level
-programmers. Part of this gap is represented by the difference between the type
-system of core webAssembly and the needs of a typical programmer.
+expressivitiy of core webAssembly and the needs of API designers and application
+and library authors. Part of this gap is represented by the difference between
+the type system of core webAssembly and the needs of a typical programmer.
 
 As an example of this, core webAssembly has no intrinsic type corresponding to
 `string`; even though this is arguably the most important type in many if not
@@ -17,7 +17,7 @@ most applications.[^The reasons for this lack are beyond the scope of this
 note.] Note that neither the MVP of webAssembly nor the vision implied by the
 [GC proposal][GC] have `string` as an intrinsic type.
 
-A core part of this proposal is the design of an IDL (Interoperable Definition
+A core part of this proposal is the design of an IDL (Interface Definition
 Language); one goal of which is to address the semantic gap. However, in
 designing an IDL there remain several questions, which this note aims to
 address:
@@ -41,6 +41,9 @@ These can be summarized as
 >Interface Types are intended to enable webAssembly modules to interoperate
 >across ownership boundaries.
 
+The different scenarios outlined are simply different cases where ownership
+boundaries are involved.
+
 ### Ownership Boundaries
 
 The term 'ownership boundary' bears further explanation. Informally, we can say
@@ -51,7 +54,11 @@ More formally, a function call crosses an ownership boundary when it is
 important that the only information communicated to the function involves data
 that is explicitly passed as arguments to the call, and that there is no
 possibility that the callee can side-effect the caller's state (by, for example,
-overwriting areas of linear memory).
+overwriting areas of linear memory). Nor can the caller side-effect the callee's
+state other than by invoking one of the callee's publicly exported APIs.
+
+>Note that the 'other' aspects of ownership -- such as who is responsible for
+>the code -- are also important but beyond the scope of this note.
 
 This limiting of trust is a vital enabler for the API ecosystem: if
 functionalities can be published and consumed with limited trust it makes it
@@ -81,6 +88,12 @@ serialization format.[^Although there is a binary encoding, its role is to
 support the publishing and loading of webAssembly modules; not to support
 function interaction.] Indeed, it is expected that no serialization is required
 when invoking a function via Interface Types' adapters.
+
+### Language Specific Module Systems
+
+Interface Types are _not_ intended to replacement language specific module
+systems. For example, C/C++ modules would continue to be linked together into
+single webAssembly modules. 
 
 ## WebIDL
 
@@ -142,6 +155,10 @@ attributes to convey additional semantics that are very Javascript centric. Such
 usages would have to be prohibited when designing APIs for languages other than
 Javascript.
 
+This again leads to a situation where the 'real' IDL that would be usable for
+webAssembly would be a limited form of a public IDL. This is not an ideal model
+for standardization nor for supporting the wider webAssembly ecosystem.
+
 ### Nominal Types
 
 Javascript does not have a static model of types. On the other hand, many
@@ -149,7 +166,7 @@ programming languages do have static types. One of the features of many static t
 
 A nominal type differs from a structural type in several ways; but one of the
 most fundamental ways is that a nominal type can be used to model entities that
-are not directly conveyed by the actual data.
+are not directly conveyed by the actual data used to denote them.
 
 For example, one may choose to model a chair using the nominal type `Chair`;
 whose values contain a pair of integers: the SKU and price (for example). The
@@ -166,13 +183,71 @@ taken into consideration.
 
 ### Algebraic Type Definitions
 
+The IT type language permits the definition of a limited form of _algebraic type
+definition_. This is, in part, to regularize concepts such as nullability and to
+permit limited forms of polymorphism (allowing a color to be named by a string,
+a vector of small integers or a large integer, for example).
 
+WebIDL explicitly prohibits the formation of new types; indeed it uses type
+unions to achieve similar polymorphism. However, as we note above, not all
+programming languages support dynamic types or type unions; which makes it
+problematic to support such polymorphism.
 
-
+The form of algebraic types envisaged in the IT system is intentionally
+limited. For example, we do not permit _recursive_ types to be defined. This is
+in keeping with the vision of supporting APIs across ownership boundaries where
+complex data is likely to take limited form.[^This design choice may be
+revisited in future versions of the IT specification if supporting structured
+types such as abstract XML and/or JSON become important.]
 
 ### Working with WebIDL
 
+While the IT language introduces its own IDL, it is still clearly important to
+support WebIDL; particularly for Web APIs.
 
+The strategy that we adopt can be summarized as interpreting WebIDL as an
+alternate target to webAssembly itself.
+
+When using IT to specify a public API for a webAssembly module, the author must
+provide special _adapters_ -- import adapters for accessing external APIs and
+export adapters when offering a public API.
+
+Similarly, in the case where a WebIDL API is involved, there would be adapters
+between the IT language and WebIDL. There would also be adapters between WebIDL
+and the host environment; although these are usually private to the host.
+
+In many cases, the adapters would be automatically generated by language
+specific tools; which would mean that individual code authors would likely be
+not involved in the construction of the adapters.
+
+The IT language has been designed to be a slight extension of a simplification
+of WebIDL. We anticipate that it should be straightfoward to construct import
+and export adapters between IT and WebIDL completely automatically.
+
+Note that this does not imply that the semantics of IT and WebIDL are completely
+aligned: any automatically generated adapters would likely ignore those aspects
+of WebIDL that are not accounted for in the IT language.
+
+#### Modifying WebIDL itself
+
+One of the strategies that we considered was modifying WebIDL itself. However,
+for some of the same reasons outlined here, this is considered to be infeasible:
+WebIDL does have an orientation to Javascript that would be difficult to carry
+forward in such a refactoring.
+
+## Summary
+
+The intented purpose of Interface Types requires a language that allows API
+designers and application authors to express their intentions in a way that is
+language neutral. 
+
+Although it is not our intention to support arbitrary language interoperability,
+we do wish to support it for the limited scenarios where ownership boundaries
+are involved.
+
+We chose not to use WebIDL as the IDL for Interface Types because WebIDL is not
+language agnostic and because it would be too disruptive of the Web community to
+change WebIDL to fit the requirements.
 
 
 [Explainer]: https://github.com/WebAssembly/interface-types/blob/explainer/proposals/interface-types/Explainer.md
