@@ -17,8 +17,8 @@ function:
 ```C++
 typedef std::shared_ptr<std::string> shared_string;
 
-shared_string nondeterministic_choice(shared_string one, shared_string two) {
-  return random() > 0.5 ? std::move(one) : std::move(two);
+shared_string nondeterministic_choice(shared_string&& one, shared_string&& two) {
+  return random() > 0.5 ? one : two;
 }
 ```
 
@@ -29,7 +29,7 @@ resources entering the function, with just one leaving. However, when exposed as
 an Interface Type function, all these resources must be created and properly
 disposed of within the adapter code itself.
 
-This note focuses on the techniques that enable this to be acheived reliably.
+This note focuses on the techniques that enable this to be achieved reliably.
 
 ## Exporting the Chooser
 
@@ -73,32 +73,55 @@ count and a raw pointer to the resource.
   (param $left string)
   (param $right string)
   (result string)
+
   local.get $left
+  dup
   string.size
-  call $malloc
-  own (i32)
-    call $free
-  end
-  let (local $l owned<i32>)
-    local.get $left
-    local.get $l
-    own.project ;; pick up actual resource
-    local.get $left
-    string.size
-    string-to-memory "memx"
+  call-export "malloc"
+  string-to-memory            ;; leave the destination on the stack
+  call-export "shared_builder"
+  let (local $l i32)
+  
     local.get $right
+    dup
     string.size
-    call $malloc
-    own (i32)
-      call $free
-    end
-    let (local $r owned<i32>)
-      local.get $right
-      local.get $r
-      own.project
-      local.get $right
-      string.size
-      string-to-memory "memx"
+    call-export "malloc"
+    string-to-memory
+    call-export "shared_builder" ;; build a shared_ptr structure
+    let (local $r i32)
+      ;; set up the call to the core chooser 
+      local.get $p1
+      local.get $p2
+      call-export "chooser_"  ;; call the chooser itself
+      call-export "shared_moveout" ;; actual value
+      own (i32)               ;; own the result
+        call-export "free"    ;; will eventually call to free string
+      end
+      memory-to-string
       
+      local.get $p2           ;; the shared_ptr structures
+      call-export "shared_release"
+    end
+    local.get $p1
+    call-export "shared_release"
+  end
+end
 ```
+
+The returned value from `chooser_` is wrapped up as an `own`ed allocation
+and lifted to a `string`.
+
+>Note we do not need to `own` the string memory of the arguments because we have
+>asserted that both the arguments to `chooser_` will be the _last_ references to
+>the strings. However, only one of the C++ strings will be deallocated -- the
+>other is returned to us. We _do_ need to `own` the return result, however.
+
+In addition to the Interface Types management, because we are using a
+non-trivial C++ structure, we have to invoke the appropriate constructors,
+access functions and destructors of our `shared_ptr` structure.
+
+This is achieved through the calls to `shared_builder`, `shared_moveout` and
+`shared_release` functions exported by the core WebAssembly module.
+
+
 
