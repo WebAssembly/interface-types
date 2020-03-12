@@ -17,8 +17,8 @@ function:
 ```C++
 typedef std::shared_ptr<std::string> shared_string;
 
-shared_string nondeterministic_choice(shared_string&& one, shared_string&& two) {
-  return random() > 0.5 ? one : two;
+shared_string nondeterministic_choice(shared_string one, shared_string two) {
+  return random() > 0.5 ? std::move(one) : std_move(two);
 }
 ```
 
@@ -92,7 +92,7 @@ count and a raw pointer to the resource.
       ;; set up the call to the core chooser 
       local.get $p1
       local.get $p2
-      call-export "chooser_"  ;; call the chooser itself
+      call-export "nondeterministic_choice"  ;; call the chooser itself
       call-export "shared_moveout" ;; actual value
       own (i32)               ;; own the result
         call-export "free"    ;; will eventually call to free string
@@ -108,20 +108,79 @@ count and a raw pointer to the resource.
 end
 ```
 
-The returned value from `chooser_` is wrapped up as an `own`ed allocation
-and lifted to a `string`.
+The returned value from `nondeterministic_choice` is wrapped up as an `own`ed
+allocation and lifted to a `string`.
 
 >Note we do not need to `own` the string memory of the arguments because we have
->asserted that both the arguments to `chooser_` will be the _last_ references to
->the strings. However, only one of the C++ strings will be deallocated -- the
->other is returned to us. We _do_ need to `own` the return result, however.
+>asserted that both the arguments to `nondeterministic_choice` will be the
+>_last_ references to the strings. However, only one of the C++ strings will be
+>deallocated -- the other is returned to us. We _do_ need to `own` the return
+>result, however.
 
 In addition to the Interface Types management, because we are using a
 non-trivial C++ structure, we have to invoke the appropriate constructors,
 access functions and destructors of our `shared_ptr` structure.
 
 This is achieved through the calls to `shared_builder`, `shared_moveout` and
-`shared_release` functions exported by the core WebAssembly module.
+`shared_release` functions exported by the core WebAssembly module. These
+construct the shared pointer (with the actual string as argument), extract the
+string and release the structure respectively.
+
+## Calling the chooser
+
+We shall assume that the import to `nondeterministic_choice` were as though it
+was from a core WebAssembly import whose signature is:
+
+```wasm
+(func (import "" "chooser_")
+  (param i32 i32 i32 i32)
+  (result i32 i32))
+```
+
+The two strings are passed as pairs of memory address and length, and the return
+is similarly returned as a pair of `i32` numbers.
+
+>Note that although _we_ believe that the returned value will be the same as one
+>of the arguments, the limitations of Interface Types mean that the returned
+>string will be a copy of one of the arguments. 
+
+The import adapter for `chooser` has to lift the two argument `string`s and
+lower the return value:
+
+```wasm
+(@interface implement (import "" "chooser_")
+  (param $lp i32)
+  (param $ll i32)
+  (param $rp i32)
+  (param $rl i32)
+  (result i32 i32)
+
+  local.get $lp
+  local.get $ll
+  memory-to-string
+
+  local.get $rp
+  local.get $rl
+  memory-to-string
+
+  call-import "chooser"  ;; leaves a string on stack
+
+  let (local $res string)
+    local.get $res
+    dup
+    string.size
+	call-export "malloc" ;; local malloc
+    string-to-memory
+	local.get $res
+	string.size         ;; return size as second result
+  end
+)	
+```
+
+Compared to the export adapter, the import adapter is very straightforward. This
+is because we require the caller -- a core wasm function -- to take
+responsibility for the argument strings and for the returned string.
+
 
 
 
