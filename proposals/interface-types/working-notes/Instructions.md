@@ -103,7 +103,7 @@ string.size #encoding
 
 The type of this instruction is:
 ```
-[string] -> [i32]
+[string] -> [u32]
 ```
 
 The output is the number of bytes needed to represent the input string in `#encoding`.
@@ -125,7 +125,7 @@ string.lift_memory #memidx #encoding
 
 The type of this instruction is:
 ```
-[$base: i32, $len: i32] -> [string]
+[$base: u32, $len: u32] -> [string]
 ```
 
 The output is a sequence of unicode code points taken by interpreting `store.memory[$memidx].bytes[$base .. $base + $len]` with `#encoding`.
@@ -141,7 +141,7 @@ string.lower_memory #memidx #encoding
 
 The type of this instruction is:
 ```
-[$base: i32, string] -> []
+[$base: u32, string] -> []
 ```
 
 The instruction will encode the string with `#encoding` into the memory specified by `#memidx` at the offset `$base`.
