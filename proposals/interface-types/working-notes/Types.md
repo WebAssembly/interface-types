@@ -1,30 +1,47 @@
 # Interface value types
 
-This proposal defines new interface values, which have corresponding interface value types. Interface value types are a superset of the [core value types](https://webassembly.github.io/spec/core/syntax/types.html#value-types)
+The set of types and type constructors that are specific to Interface Types
+allow API designer to express types of data and function values in a way that is
+suitable for module-level descriptions. These types are considerably richer than
+those of core WebAssembly, but would not typically be enough for a full fledged
+programming language -- that is not the purpose.
 
-Some interface value types are compound by being constructed using one or more interface value types. The abstract syntax is designed to prevent recursive types by not allowing a compound type definition to refer to itself or other definitions. This is so that the set of control flow needed to generate all interface values is simple enough to allow for optimized lazy semantics.
+The space of types forms a a superset of the
+[core value types](https://webassembly.github.io/spec/core/syntax/types.html#value-types);
+this is because adapter functions will often use a mixture of core WebAssembly
+types and Interface types.
 
-The interface value type syntax is summarized below. Following after that is a section for each type that gives the full syntax, possible values, validation rules, and subtyping relationships.
+As a matter of policy, Interface types allow designers to express numeric types,
+strings, compound types, function types, optional types, arrays and
+sequences. Note that these types are intended to represent _immutable_ values;
+with some limited exceptions planned for the future..
+
+This document has a structure that mirrors the structure of the core WebAssembly
+proposal: we discuss the abstract structure of Interface types, the validation
+rules for type expressions and the binary format of type expressions.
+
+## Structure
+
+The Interface types can partitioned into different groups, reflecting the kind of entities involved.
+
+>Note: unlike core WebAssembly types, there is not always a straightforward
+>correspondence between Interface types and run-time entities. This is because
+>Interface types are _abstract_ and require a _realization_ in terms of core
+>WebAssembly entities.
+
+>This realization is not directly part of this specification, although there are
+>specific forms and instructions whose purpose is to aid in it.
+
+### Basic Value Types
 
 ```
-#interface-valtype ::=
-  | #valtype
-  | s8
-  | s16
-  | s32
-  | s64
-  | u8
-  | u16
-  | u32
-  | u64
-  | string
-  | record ..
-  | array ..
+basictype ::= integraltype | stringtype
 ```
 
-## `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`
+#### Integral Types
 
-Integer values.
+There are eight integral types, corresponding to signed and unsigned variants of
+8 bit, 16 bit, 32 bit and 64 bit integers.
 
 | Type | Values            |
 |------|-------------------|
@@ -37,36 +54,157 @@ Integer values.
 | u32  | [0, 2^32-1]       |
 | u64  | [0, 2^64-1]       |
 
-These types differ from the core value types in that they represent a range of integers instead of a set of bits.
-
-## `string`
-
-A string value is a sequence of [unicode code points](https://www.unicode.org/glossary/#code_point).
-
-## `record`
-
-The `record` interface value type is a compound type defined by the following abstract syntax:
 
 ```
-#record ::= record $fields: (field #interface-valtype)*
+integraltype ::= s8 | u8 | s16 | u16 | s32 | u32 | s64 | u64
 ```
 
-A `record` value is an ordered set of `|$fields|` interface values, where each interface value is of the corresponding type in `$fields`. This is sometimes known as a struct or product type.
+Integral types denote an integer value in a given range. There is no implied
+storage layout.
 
-A `record` type is valid iff:
- * `|$fields| > 0`
- * For every `field` in `$fields`
-  * `#interface-valtype` is valid
+#### String Type
 
-## `array`
+The `string` type denotes a sequence of
+[unicode code points](https://www.unicode.org/glossary/#code_point).
 
-The `array` interface value type is a compound type defined by the following abstract syntax:
 
 ```
-#array ::= array #interface-valtype
+stringtype ::= string
 ```
 
-An `array` value is a homogenous sequence of interface values with type `$interface-value-type`.
+>Note: In a future revision, this may be reinterpreted as a macro of a more
+>explicit designation of the `sequence` type.
 
-An `array` type is valid iff:
- * `#interface-valtype` is valid
+Note that there is no implied representation or encoding implied in this.
+
+
+### Structured Value Types
+
+Structured types allow the representation of more complex combinations of
+values. There are five forms of structured type: arrays, sequences, records,
+protocols and algebraic variants.
+
+```
+structuretype ::= optiontype | eithertype |
+   arraytype | sequencetype | recordtype | varianttype
+```
+
+#### Option Type
+
+Option types are used to model nullability in types.
+
+```
+optiontype ::= option type
+```
+
+The `option` type can be viewed as a use of type variants -- with one variant
+being the enumerated symbol `$none` and the other being the single value wrapped
+in a `$some` variant.
+
+#### Either Type
+
+The `either` type is used to model situations where one of two values may be
+returned by a function. A classic case for this is in modeling error returns in
+APIs.
+
+```
+eithertype ::= either type
+```
+
+#### Arrays
+
+An `array` consists of a finite vector of elements, each of which has the same
+type.
+
+```
+arraytype ::= array type
+```
+
+Both the type and the representation of each element of the array is assumed to
+be identical. Furthermore, arrays are assumed to have a know element
+count. (Indexing into arrays is not part of this specification.)
+
+#### Sequences
+
+A sequence consists of an ordered collection of elements; each of which has the
+same type.
+
+Sequence elements may not have identical representation; nor is it necessarily
+known how many elements there are in a sequence.
+
+```
+sequencetype ::= sequence type
+```
+
+#### Records
+
+A `record` type is a tuple composition of types. 
+
+```
+#record ::= record [ vec(#interfacetype) ]
+```
+
+Fields in a record are accessed via their index; for convenience, field indices
+may be given a local name:
+
+```
+record [ $name string $age u64]
+```
+
+#### Variant Types
+
+A `variant` consists of an ordered collection of alternative vectors of types.
+
+```
+varianttype ::= oneof [ vec(vec(#interfacetype)) ]
+```
+
+Variants are accessed by their index in the vector of alternatives. For
+convenience, variants may be given a local name:
+
+```
+variant [ $id [s64] $name [string] ]
+```
+
+A given variant may not have any type arguments; in which case it corresponds to
+an enumerated symbol. For example, the boolean type may be viewed as a synonym
+for:
+
+```
+(type $boolean (variant ($false) ($true)))
+```
+
+Additionally, the option type may be viewed as a synonym for:
+
+```
+(type ($option #tp) (variant ($nil) ($some #tp)))
+```
+
+>Note: this definition is not technically legal.
+
+The representation of a variant is determined by the representation of each of
+its alternatives.
+
+### Function Type
+
+A `functionType` denotes a function whose signature is expressed as IT types.
+
+```
+functionType ::= [vec(#interfacetype)] -> [vec(#interfacetype)]
+```
+
+The definition of a `functionType` mirrors that of the core WebAssembly form;
+except that the arguments and returns may be interface types.
+
+### Protocols
+
+A protocol consists of a collection of function signatures. It is intended to
+denote a related set of functionality that a given entity may offer.
+
+```
+protocol ::= [vec(identifier functionType)]
+```
+
+>Discussion: Should members of a protocol be identified by name or by index?
+
+
