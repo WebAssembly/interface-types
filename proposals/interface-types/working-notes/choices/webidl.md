@@ -28,66 +28,34 @@ In particular,
 >across ownership boundaries.
 
 The enriched type system that is defined by the Interface Types proposal has
-some of the hallmarks of an IDL (Interface Definition Language). However, there
-remain several questions, which this note aims to address:
+some of the hallmarks of an IDL (Interface Definition Language). However, it is
+not the intention of the proposal to introduce a new IDL; and Interface Types
+deliberately lacks many features that would be required for an IDL.
 
-* What are the design considerations that lie behind the specification of the
-  Interface Types language of types?
-* Why not WebIDL?
+There remain several questions, which this note aims to address:
+
 * Are we intending to support interoperability between different programming
   languages?
 * Given the importance of the web platform, what is the relationship between the
   Interface Types and WebIDL?
   
-### Supporting Interoperability Across Ownership Boundaries
-
-Interoperating across ownership boundaries has different expectations than when
-within a shared domain. In particular, there more limited expectations for
-sharing, architecture, and trust.
-
-The term 'ownership boundary' bears further explanation. Informally, we can say
-that we are crossing an ownership boundary when, for example, my code is calling
-your code and I want to limit the extent that I have to trust you.
-
-By restricting the intended scope to interoperability across ownership
-boundaries the design of Interface Types can sidestep the issues that cause
-stumbling blocks for the general inter-language interopability.
-
-### Interoperability via Function Calls
-
-Interoperability between different systems is arguably a requirement of all
-modern applications. However, one of the differentiating aspects of
-interoperability as it applies to WebAssembly is the role of the function
-call. Unlike interoperability expressed at the level of web services (say),
-using a foreign capability in WebAssembly is most naturally expressed as a
-function call.
-
-I.e., invoking capabilities does not naturally imply sending messages,
-serializing data, network connections, or even crossing a process boundary: the
-invoked capability may even be present in the same thread.
-
-This view of interoperability informs much of the style of the Interface Types
-proposal. In particular, this proposal does not include a serialization
-format.[^Although there is a binary encoding, its role is to support the
-publishing and loading of WebAssembly modules; not to support function
-interaction.] Indeed, it is expected that no serialization is required when
-invoking a function via Interface Types' adapters.
-
-### Language Specific Module Systems
-
-Interface Types are _not_ intended to replacement language specific module
-systems. Nor are Interface Types intended to address the general inter-language
-interoperability problem.
-
-Indivual languages will often have their own techniques aimed at allowing
-importing and exporting of modules. For example, C/C++ modules would continue to
-be linked together into single WebAssembly modules.
-
 ## WebIDL
 
 [Web IDL][WebIDL] is clearly an important IDL for Web APIs. And, since the web
 platform is a crucial domain for WebAssembly, it seems necessary to address the
-question of "why not WebIDL" for describing APIs in Interface Types.
+question of "why not WebIDL?" for describing APIs in Interface Types.
+
+Like WebIDL, Interface Types uses a model of function call rather than a
+serialization format to enable interoperability across module
+boundaries. However, Interface Types differ in some important areas:
+
+* Interoperability is mediated through special adapter functions,rather than
+  special annotations of APIs;
+* APIs are strongly statically typed as far as is practicable; reflecting the
+  reality that many WebAssembly modules are not written in dynamically typed
+  programming languages; and
+* Interface Types are not intended to enable the communication of arbitrary
+values; rather the scheme is purposefully limited in its range of types.
 
 The case against WebIDL is comprised of three principal arguments:
 
@@ -214,7 +182,8 @@ This is a slight extension to the inter-WebAssembly shared-nothing linking appro
 As an example of the former approach, a WebAssembly Binding for Interface Types
 would:
 
-* map the various integers types (`byte`, `octet`, `long` etc.) from WebIDL to their closest analogues in Interface Types (`s8`, `u8`, `s32` etc.).
+* map the various integers types (`byte`, `octet`, `long` etc.) from WebIDL to
+  their closest analogues in Interface Types (`s8`, `u8`, `s32` etc.).
 * map the various string types (`DOMString`, `USVString`) to `string`.
 
   > Note that this involves losing a distinction available within WebIDL.
@@ -225,7 +194,6 @@ would:
 Note that this does not imply that the semantics of Interface Types and WebIDL
 are completely aligned: any such binding specification would likely ignore those
 aspects of WebIDL that are not accounted for in the Interface Types language.
-
 
 #### Modifying WebIDL itself
 
