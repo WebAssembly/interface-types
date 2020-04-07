@@ -71,27 +71,26 @@ count and a raw pointer to the resource.
 ```wasm
 (@interface func $stralloc-x
   (param $str string)
-  (result owned<i32>)        ;; return an owned shared ptr of the string
+  (result (owned i32))        ;; return an owned shared ptr of the string
   local.get $str
   string.size
   call-export "malloc-x"     ;; create string entity of right size
   own (i32)
     call-export "free-x"     ;; temporary, until safely re-owned
   end
-  let (local $ptr owned<i32>) (result owned<i32>)
-    local.get $str
+  let (local $ptr (owned i32)) (result (owned i32))
+    (utf8.from.string
+      (local.get $str)
+      (owned.access (local.get $ptr))  ;; access the owned pointer
+      (string.size
+        (local.get $str)))
     local.get $ptr
-	owned.access             ;; access the owned pointer
-	local.get $str
-	string.size
-    utf8.from.string
-	local.get $ptr
   end
 )
 
-(@interface func $shared-x
-  (param $ptr owned<i32>)
-  (result owned<i32>)        ;; return a shared ptr of the entity
+(@interface func $sharedalloc-x
+  (param $ptr (owned i32))
+  (result (owned i32))        ;; return a shared ptr of the entity
 
   local.get $ptr
   owned.release              ;; access pointer and remove ownership
@@ -108,35 +107,26 @@ end
   (param $right string)
   (result string)
 
-  local.get $left
-  invoke-func $stralloc-x
-  invoke-func $shared-x     ;; make it a shared ptr
-  let (local $lpo owned<i32>) (result string)
-    local.get $right
-    invoke-func $stralloc-x
-	invoke-func $shared-x   ;; make it a shared ptr
-    let (local $rp owned<i32>) (result string)
-      ;; set up the call to the core chooser 
-      local.get $lp
-	  owned.access
-      local.get $rp
-	  owned.access
-      call-export "nondeterministic_choice"  ;; call the chooser itself
-      own (i32)               ;; own the result
-        call-export "shared-release-x"    ;; will eventually call to free string
-      end		
-      owned.access
-	  call-export "shared-get-x"
-	  call-export "access-utf8-x"
-      string.from.utf8
-    end
+  (call-export "nondeterministic_choice"  ;; call the chooser itself
+    (invoke-func $sharedalloc-x     ;; make it a shared ptr
+      (invoke-func $stralloc-x
+        (local.get $left)))
+    (invoke-func $sharedalloc-x   ;; make it a shared ptr
+      (invoke-func $stralloc-x
+        local.get $right)))
+  own (i32)               ;; own the result
+    call-export "shared-release-x"    ;; will eventually call to free string
   end
+  owned.access
+  (string.from.utf8
+    (call-export "access-utf8-x"
+      (call-export "shared-get-ptr-x")))
 )
 ```
 
-For clarity, we separate out two helper functions -- `shared-x` and `stralloc-x`
--- whose role is to create a shared pointer pair and to instantiate a memory
-string from an Interface Types's `string` entity.
+For clarity, we separate out two helper functions -- `sharedalloc-x` and
+`stralloc-x` -- whose role is to create a shared pointer pair and to instantiate
+a memory string from an Interface Types's `string` entity.
 
 >Note the `-x` suffix signals that these functions are part of the exporting
 >module.
@@ -161,19 +151,20 @@ This is achieved through some additional core helper functions that are exported
 by the core wasm module, although they would not typically be exported as
 Interface Type functions:
 
-* `shared-builder-x` is used to create and initialize a `shared_ptr`
-  structure. It takes a pointer as an argument and returns a `shared_ptr` with
-  an initial reference count of 1.
+* `shared-builder-x` : `(T)=>shared_ptr<T>` is used to create and initialize a
+  `shared_ptr` structure. It takes a pointer as an argument and returns a
+  `shared_ptr` with an initial reference count of 1.
 
-* `shared-release-x` is used to decrement the reference count of a `shared_ptr`;
-  and if that results in the reference count dropping to zero _both the
-  underlying resource and the `shared_ptr` structure itself are disposed of_.
+* `shared-release-x` : `(shared_ptr<T>)=>void` is used to decrement the
+  reference count of a `shared_ptr`; and if that results in the reference count
+  dropping to zero _both the underlying resource and the `shared_ptr` structure
+  itself are disposed of_.
 
-* `shared-get-x` is used to access the underlying resource of a `shared_ptr`
-  without affecting it's reference count.
+* `shared-get-ptr-x` : `(shared_ptr<T>)=>T` is used to access the underlying
+  resource of a `shared_ptr` without affecting it's reference count.
 
-* `access-utf8-x` is used to access the memory pointer for a string's text and
-  its length.
+* `access-utf8-x` : `(std_string)=>(char*,i32)` is used to access the memory
+  pointer for a string's text and its length.
 
 In practice there would likely be additional support functions -- such as a
 version of accessing a shared resource whilst incrementing reference
@@ -194,9 +185,9 @@ The two strings are passed as memory addresses of structures -- from which the
 text of the string and its length can be ascertained. The structure itself is
 unspecified; we will use access functions -- such as `access-utf8` as needed.
 
->Note that although _we_ believe that the returned value will be the same as one
->of the arguments, the limitations of Interface Types mean that the returned
->string will be a copy of one of the arguments. 
+>Note that although it may seem clear to _the reader_ that the returned value
+>must one of the arguments to the call, the limitations of Interface Types mean
+>that the returned string will be a copy of one of the arguments.
 
 The import adapter for `chooser_` has to lift the two argument `string`s and
 lower the return value:
@@ -204,17 +195,20 @@ lower the return value:
 ```wasm
 (@interface func $stralloc-i
   (param $str string)
-  (result i32)           ;; return a shared ptr of the string
+  (result (owned i32))        ;; return an owned shared ptr of the string
   local.get $str
   string.size
   call-export "malloc-i"     ;; create string entity of right size
-  let (local $ptr i32) (result i32)
-    local.get $str
+  own (i32)
+    call-export "free-i"     ;; temporary, until safely re-owned
+  end
+  let (local $ptr (owned i32)) (result (owned i32))
+    (utf8.from.string
+      (local.get $str)
+      (owned.access (local.get $ptr))  ;; access the owned pointer
+      (string.size
+        (local.get $str)))
     local.get $ptr
-	local.get $str
-	string.size
-    utf8.from.string
-	local.get $ptr
   end
 )
 
@@ -261,329 +255,33 @@ being combined with one that has some complexity:
   call-export "access-utf8-i"
   string.from.utf8
 
-  let ($left string
-       $right string) (result string)
-    local.get $left
-    invoke-func $stralloc-x
-    invoke-func $shared-x     ;; make it a shared ptr
-    let (local $lp owned<i32>) (result string)
-      local.get $right
-      invoke-func $stralloc-x
-	  invoke-func $shared-x   ;; make it a shared ptr
-      let (local $rp owned<i32>) (result string)
-        ;; set up the call to the core chooser 
-        local.get $lp
-		owned.access
-        local.get $rp
-		owned.access
-        call-export "nondeterministic_choice"  ;; call the chooser itself
-        own (i32)               ;; own the result
-          call-export "shared-release-x" 
-        end
-        owned.access
-        call-export "shared-get-x"
-        call-export "access-utf8-x"
-        string.from.utf8
-      end
-	end	
+  let (local $left string)(local $right string)(result string)
+    (call-export "nondeterministic_choice"  ;; call the chooser itself
+      (invoke-func $sharedalloc-x     ;; make it a shared ptr
+        (invoke-func $stralloc-x
+          (local.get $left)))
+      (invoke-func $sharedalloc-x   ;; make it a shared ptr
+        (invoke-func $stralloc-x
+          local.get $right)))
+    own (i32)               ;; own the result
+      call-export "shared-release-x"    ;; will eventually call to free string
+    end
+    owned.access
+    (string.from.utf8
+      (call-export "access-utf8-x"
+        (call-export "shared-get-ptr-x")))
   end
   invoke-func "stralloc-i" ;; allocate a local string for the result
 )
 ```
 
-After we expand the helper functions, we get:
-
-```wasm2
-(@interface implement (import "" "chooser_")
-  (param $l i32)
-  (param $r i32)
-  (result i32)
-
-  local.get $l
-  call-export "access-utf8-i"
-  string.from.utf8
-
-  local.get $r
-  call-export "access-utf8-i"
-  string.from.utf8
-
-  let ($left string
-       $right string)
-    local.get $left
-    string.size
-    call-export "malloc-x"     ;; create string entity of right size
-	own (i32)                  ;; until we can safely package
-      call-export "free-x"
-	end
-    let (local $ptr owned<i32>)(result owned<i32>)
-      local.get $left
-      local.get $ptr
-	  owned.access
-      local.get $left
-      string.size
-      utf8.from.string
-      local.get $ptr
-    end
-    owned.release              ;; release the owned
-    i32.const 1                ;; initial reference count of 1
-    call-export "shared-builder-x" ;; make it a shared ptr pair
-    own (i32)
-      call-export "shared-release-x"
-    end
-    let (local $lp i32) (result string)
-      local.get $right
-	  string.size
-      call-export "malloc-x"     ;; create string entity of right size
-      own (i32)                  ;; until we can safely package
-        call-export "free-x"
-	  end
-      let (local $ptr owned<i32>)(result owned<i32>)
-        local.get $right
-        local.get $ptr
-		owned.access
-        local.get $right
-        string.size
-        utf8.from.string
-        local.get $ptr
-      end
-      owned.release
-      i32.const 1                ;; initial reference count of 1
-      call-export "shared-builder-x" ;; make it a shared ptr pair
-      own (i32)
-        call-export "shared-release-x"
-      end
-      let (local $rp owned<i32>) (result string)
-        ;; set up the call to the core chooser 
-        local.get $lp
-		owned.access
-        local.get $rp
-		owned.access
-        call-export "nondeterministic_choice"  ;; call the chooser itself
-        own (i32)               ;; own the result
-          call-export "shared-release-x" 
-        end
-        owned.access
-        call-export "shared-get-x"
-        call-export "access-utf8-x"
-        string.from.utf8
-      end
-    end
-  end
-  let (local $str string)(result i32)
-    local.get $str
-    string.size
-    call-export "malloc-i"     ;; create string entity of right size
-    let (local $ptr i32)(result i32)
-      local.get $str
-      local.get $ptr
-	  local.get $str
-      string.size
-      utf8.from.string
-      local.get $ptr           ;; our final return value
-    end
-  end
-)	
-```
-
-Reordering to bring parameter use closer to definition
-
-```wasm3
-(@interface implement (import "" "chooser_")
-  (param $l i32)
-  (param $r i32)
-  (result i32)
-
-  local.get $l
-  call-export "access-utf8-i"
-  string.from.utf8
-
-  let ($left string) (result string)
-    local.get $left
-    string.size
-    call-export "malloc-x"     ;; create string entity of right size
-	own (i32)                  ;; until we can safely package
-      call-export "free-x"
-	end
-    let (local $ptr owned<i32>)(result owned<i32>)
-      local.get $left
-      local.get $ptr
-	  owned.access
-      local.get $left
-      string.size
-      utf8.from.string
-      local.get $ptr
-    end
-    owned.release              ;; release the owned
-    i32.const 1                ;; initial reference count of 1
-    call-export "shared-builder-x" ;; make it a shared ptr pair
-    own (i32)
-      call-export "shared-release-x"
-    end
-    let (local $lp owned<i32>) (result string)
-      local.get $r
-      call-export "access-utf8-i"
-      string.from.utf8
-      let ($right string)(result string)
-        local.get $right
-        invoke-func $stralloc-x
-        string.size
-        call-export "malloc-x"     ;; create string entity of right size
-        own (i32)                  ;; until we can safely package
-          call-export "free-x"
-	    end
-        let (local $ptr owned<i32>)
-          local.get $right
-          local.get $ptr
-		  owned.access
-          local.get $right
-          string.size
-          utf8.from.string
-          local.get $ptr
-        end
-        owned.release
-        i32.const 1                ;; initial reference count of 1
-        call-export "shared-builder-x" ;; make it a shared ptr pair
-        own (i32)
-          call-export "shared-release-x"
-        end
-        let (local $rp owned<i32>) (result owned<i32>)
-          ;; set up the call to the core chooser 
-          local.get $lp
-          owned.access
-          local.get $rp
-          owned.access
-          call-export "nondeterministic_choice"  ;; call the chooser itself
-          own (i32)               ;; own the result
-            call-export "shared-release-x" 
-          end
-          owned.access
-          call-export "shared-get-x"
-          call-export "access-utf8-x"
-          string.from.utf8
-        end
-      end
-	end	
-  end
-  let (local $str string)(result i32)
-    local.get $str
-    string.size
-    call-export "malloc-x"     ;; create string entity of right size
-    let (local $ptr i32)
-      local.get $str
-      local.get $ptr
-	  local.get $str
-      string.size
-      utf8.from.string
-      local.get $ptr           ;; our final return value
-    end
-  end
-)
-```
-
-Folding and fusing the string lifting and lowering operators:
+After we expand the helper functions, performing the inlining, fusing pairs of
+lifting and lowering operations, memory ownership resolutions, and other
+rewriting operations, we get code that no longer has any explicit Interface Type
+instructions:
 
 
-```wasm4
-(@interface implement (import "" "chooser_")
-  (param $l i32)
-  (param $r i32)
-  (result i32)
-
-  local.get $l
-  call-export "access-utf8-i" ;; return base & len
-  
-  let (local $lbase i32)(local $lsize i32)(result i32)
-    local.get $lbase
-    local.get $lsize
-    call-export "malloc-x"
-    own (i32) 
-      call-export "free-x"
-    end
-    let (local $ptr owned<i32>)(result owned<i32>)
-      local.get $lbase
-      local.get $ptr
-      owned.access
-      local.get $lsize
-      memory.copy "mem-i" "mem-x" ;; copy string across
-      local.get $ptr
-      owned.release
-      i32.const 1                ;; initial reference count of 1
-      call-export "shared-builder-x" ;; make it a shared ptr pair
-      own (i32)                  ;; $lp is owned
-        call-export "shared-release-x"
-      end
-    end
-    let (local $lp owned<i32>) (result i32)
-      local.get $r
-      call-export "access-utf8-i"
-      let (local $rbase i32)(local $rsize i32)(result i32)
-        local.get $rbase
-        local.get $rsize
-        call-export "malloc-x"
-        own (i32) 
-          call-export "free-x"
-        end
-	let (local $ptr owned<i32>)(result owned<i32>)
-          local.get $rbase
-	  local.get $rsize
-          local.get $ptr
-          owned.access
-	  local.get $rsize
-          memory.copy "mem-i" "mem-x" ;; copy string across
-          local.get $ptr
-          owned.release
-          i32.const 1                ;; initial reference count of 1
-          call-export "shared-builder-x" ;; make it a shared ptr pair
-          own (i32)
-            call-export "shared-release-x"
-          end
-        end
-        let (local $rp i32)(result i32)
-          local.get $lp
-          owned.access
-          local.get $rp
-          owned.access
-          call-export "nondeterministic_choice"  ;; call the chooser itself
-          own (i32)               ;; own the result
-            call-export "shared-release-x" 
-          end
-          owned.access 
-          call-export "shared-get-x"
-          call-export "access-utf8-x"
-          let (local $xbase i32) (local $xsize i32) (result i32)
-            local.get $xsize
-            call-export "malloc-i"     ;; create string entity of right size
-            let (local $ptr i32)
-              local.get $xbase
-              local.get $ptr
-              local.get $xsize
-              memory.copy "mem-x" "mem-i"
-              local.get $ptr           ;; our final return value
-            end
-          end
-        end
-      end
-    end
-  end
-)	
-```
-
-Our final step is unwrapping the `own`ed blocks and moving their contents to the
-correct place in the final adapter. This requires us to know where in the code
-the last reference to the owned value are.
-
-This is achieved in two phases: creating local variables that reference the
-stack values captured by the `own` instructions, and then moving the `own`ed
-block of instructions to the appropriate location.
-
-Note that the various `owned.access` instructions disappear at this point.
-
-In this case, the `$lp` and `$rp` values have no mention after the call to
-`"nondterministic_choice"`, and so we can move the `"shared-release"` calls to
-just after that call. Similarly, the release of the return value can be
-performed after returned string has been copied into the importing module:
-
-```wasm5
+```wasm
 (@interface implement (import "" "chooser_")
   (param $l i32)
   (param $r i32)
@@ -600,9 +298,9 @@ performed after returned string has been copied into the importing module:
     local.get $lsize
     call-export "malloc-x"
     let (local $ptr i32)(result i32)
-	  local.get $lbase
-	  local.get $ptr
-	  local.get $lsize
+      local.get $lbase
+      local.get $ptr
+      local.get $lsize
       memory.copy "mem-i" "mem-x" ;; copy string across
       local.get $ptr
       i32.const 1                ;; initial reference count of 1
@@ -616,28 +314,28 @@ performed after returned string has been copied into the importing module:
         local.get $rbase
         local.get $rsize
         call-export "malloc-x"
-	let (local $ptr i32)(result i32)
+        let (local $ptr i32)(result i32)
           local.get $rbase
-	  local.get $rsize
+          local.get $rsize
           local.get $ptr
-	  local.get $rsize
+          local.get $rsize
           memory.copy "mem-i" "mem-x" ;; copy string across
           local.get $ptr
           i32.const 1                ;; initial reference count of 1
           call-export "shared-builder-x" ;; make it a shared ptr pair
-	  local.tee $o2
+          local.tee $o2
         end
         let (local $rp i32)(result i32)
           local.get $lp
           local.get $rp
           call-export "nondeterministic_choice"  ;; call the chooser itself
-	  local.tee $o3
-          call-export "shared-get-x"
+          local.tee $o3
+          call-export "shared-get-ptr-x"
           call-export "access-utf8-x"
           let (local $xbase i32) (local $xsize i32) (result i32)
             local.get $xsize
             call-export "malloc-i"     ;; create string entity of right size
-            let (local $ptr i32)
+            let (local $ptr i32)(result i32)
               local.get $xbase
               local.get $ptr
               local.get $xsize
@@ -658,11 +356,26 @@ performed after returned string has been copied into the importing module:
 )
 ```
 
+One of the final steps in this fusing process is unwrapping the `own`ed blocks
+and moving their contents to the correct place in the final adapter. This
+requires us to know where in the code the last reference to the owned value are.
+
+This is achieved in two phases: creating local variables that reference the
+stack values captured by the `own` instructions, and then moving the `own`ed
+block of instructions to the appropriate location.
+
+Note that the various `owned.access` instructions disappear at this point.
+
+In this case, the `$lp` and `$rp` values have no mention after the call to
+`"nondterministic_choice"`, and so we can move the `"shared-release"` calls to
+just after that call. Similarly, the release of the return value can be
+performed after returned string has been copied into the importing module:
+
 For simplicity, we migrated all the deallocations to the end of the fused
 adapter. In some situations, for example when processing arrays, we may wish to
 be more aggressive in invoking the memory release code.
 
-Although fairly long, this fused adapter has a striaghtfoward structure: the
+Although fairly long, this fused adapter has a straightforward structure: the
 input strings are copied from the import memory to the export memory -- and also
 wrapped as shared pointer structures as required by the signature of the
 `nondeterministic_chooser` function. The resulting string is copied from the
