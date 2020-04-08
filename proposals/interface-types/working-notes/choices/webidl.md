@@ -25,7 +25,8 @@ designers.
 In particular,
 
 >Interface Types are intended to enable WebAssembly modules to interoperate
->across ownership boundaries.
+>in limited trust situations -- for example where the modules do not share
+>memory -- sometimes called 'shared-nothing' module boundaries.
 
 The enriched type system that is defined by the Interface Types proposal has
 some of the hallmarks of an IDL (Interface Definition Language). However, it is
@@ -49,18 +50,21 @@ Like WebIDL, Interface Types uses a model of function call rather than a
 serialization format to enable interoperability across module
 boundaries. However, Interface Types differ in some important areas:
 
-* Interoperability is mediated through special adapter functions,rather than
+* Interoperability is mediated through special adapter functions, rather than
   special annotations of APIs;
-* APIs are strongly statically typed as far as is practicable; reflecting the
-  reality that many WebAssembly modules are not written in dynamically typed
-  programming languages; and
+* APIs are strongly statically typed for the most part; reflecting the reality
+  that many WebAssembly modules are not written in dynamically typed programming
+  languages; and
 * Interface Types are not intended to enable the communication of arbitrary
-values; rather the scheme is purposefully limited in its range of types.
+values; rather the scheme is purposefully limited in its range of types to those
+that can be canonically encoded and decoded into and out of WebAssembly memory.
 
 The case against WebIDL is comprised of three principal arguments:
 
-* WebIDL is too strongly aligned to JavaScript;
-* WebIDL has features that are not relevant in the context of WebAssembly; and
+* WebIDL contains a number of JavaScript specific details that would not belong
+  in the language neutral context of WebAssembly;
+* WebIDL represents design choices that are not relevant in the context of
+  WebAssembly; and
 * WebIDL does not support certain necessary features.
 
 ### JavaScript
@@ -85,11 +89,12 @@ constructing a completely new IDL.
 
 #### WebIDL Strings and Numbers
 
-Certain aspects of WebIDLs design seem to be somewhat elaborated. For
-example, there are two variants of floating point numbers: float and
-unrestricted floats. (With corresponding equivalents for double precision
-floating point numbers.) The difference between a `float` and an `unrestricted
-float` in WebIDL is one that is not common in programming languages.
+As a higher-level IDL, WebIDL includes dynamic restrictions on parameters and
+types that go beyond fundamental data types. For example, there are two variants
+of floating point numbers: float and unrestricted floats. (With corresponding
+equivalents for double precision floating point numbers.) The difference between
+a `float` and an `unrestricted float` in WebIDL is one that is not common in
+programming languages.
 
 Similarly,  WebIDL  has   three  variants  of  string   type:  the  `DOMString`,
 `ByteString` and `USVString` string. Again, the distinction between `DOMString`s
@@ -98,13 +103,8 @@ and `USVString`s is not one that is common in programming languages.
 ### Extended Attributes
 
 Heavy use is made in WebIDL of so-called extended attributes. For example, the
-`AllowShared` extended attribute is intended to mark a buffer type to be backed
-by a `SharedArrayBuffer`.
-
-Apart from the obvious dependence on a specific feature of JavaScript (shared
-array buffers), allowing sharing on values contradicts one of the key design
-criteria for Interface Types -- namely supporting interoperability in a cross
-ownership domain where there is no sharing.
+`Unforgeable` extended attribute -- which is intended to mark an operation as
+not being overwritable -- has no semantic equivalent in WebAssembly.
 
 In practice, Web APIs that are specified using WebIDL make heavy use of extended
 attributes to convey additional semantics that are very JavaScript centric. Such
@@ -114,28 +114,6 @@ JavaScript.
 This again leads to a situation where the 'real' IDL that would be usable for
 WebAssembly would be a limited form of a public IDL. This is not an ideal model
 for standardization nor for supporting the wider WebAssembly ecosystem.
-
-### Nominal Types
-
-JavaScript does not have a static model of types. On the other hand, many
-programming languages do have static types. One of the features of many static type systems is the so-called _nominal type_.
-
-A nominal type differs from a structural type in several ways; but one of the
-most fundamental ways is that a nominal type can be used to model entities that
-are not directly conveyed by the actual data used to denote them.
-
-For example, one may choose to model a chair using the nominal type `Chair`;
-whose values contain a pair of integers: the SKU and price (for example). The
-pair of integers is _not equivalent_ to a chair, but represent the information
-needed to model chairs in some application or API. 
-
-A different entity (a person say) may also be modeled by a type `Person` which
-contains two integers (for example, an indentification number and an index into
-a street address table).
-
-A given pair of integers might be either a `Chair` or a `Person` (or a 2D point)
-and there is no way of conveying the distinction unless the nominal type is also
-taken into consideration.
 
 ### Algebraic Type Definitions
 
@@ -160,7 +138,7 @@ important.]
 ### Working with WebIDL
 
 While the Interface Types system is intended to support interoperability, it is
-import to clarify how this relates to WebIDL; especially since access to Web
+important to clarify how this relates to WebIDL; especially since access to Web
 APIs is a major use case.
 
 There are two potential strategies for WebIDL: it would be possible to construct
