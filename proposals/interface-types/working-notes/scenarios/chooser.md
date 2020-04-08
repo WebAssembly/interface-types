@@ -138,10 +138,7 @@ The returned value from `nondeterministic_choice` is wrapped up as an `own`ed
 allocation and lifted to a `string`.
 
 >Note we do not need to `own` the string memory of the arguments because we have
->asserted that both the arguments to `nondeterministic_choice` will be the
->_last_ references to the strings. However, only one of the C++ strings will be
->deallocated -- the other is returned to us. We _do_ need to `own` the return
->result, however.
+>wrapped them into `shared_ptr` structures that the callee will manage. 
 
 In addition to the Interface Types memory management, because we are using a
 non-trivial C++ structure, we have to invoke the appropriate constructors,
@@ -228,6 +225,7 @@ lower the return value:
   call-import "chooser"  ;; leaves a string on stack
 
   invoke-func "stralloc-i" ;; allocate a local string for the result
+  owned.release            ;; remove ownership signal at end
 )
 ```
 
@@ -272,6 +270,7 @@ being combined with one that has some complexity:
         (call-export "shared-get-ptr-x")))
   end
   invoke-func "stralloc-i" ;; allocate a local string for the result
+  owned.release            ;; remove ownership signal at end
 )
 ```
 
@@ -383,9 +382,11 @@ export localtion to the import memory. And, finally, any temporary structures
 allocated are released.
 
 Note that the string returned by `nondeterministic_chooser` is not directly
-freed -- using a call to `"free"` -- is _released_. This is because the return
-is also a shared pointer and we are required merely to decrement the reference
-count.
+freed -- using a call to `"free-x"` (say). Instead, we invoke the
+`shared-release-x` function which decrements the reference count; and if zero
+then the memory is freed.  This is because the return is also a shared pointer
+and it is possible that `nondeterministic_chooser` took an additional reference
+to the structure.
 
 We also decrement the reference count of the created argument strings -- just in
 case the callee keeps an additional reference to either one.
