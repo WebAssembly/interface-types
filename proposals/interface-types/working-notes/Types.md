@@ -14,7 +14,7 @@ types and Interface types.
 As a matter of policy, Interface types allow designers to express numeric types,
 strings, compound types, function types, optional types, arrays and
 sequences. Note that these types are intended to represent _immutable_ values;
-with some limited exceptions planned for the future..
+with some limited exceptions planned for the future.
 
 This document has a structure that mirrors the structure of the core WebAssembly
 proposal: we discuss the abstract structure of Interface types, the validation
