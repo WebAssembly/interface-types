@@ -1,10 +1,10 @@
 # Interface value types
 
 The set of types and type constructors that are specific to Interface Types
-allow API designer to express types of data and function values in a way that is
-suitable for module-level descriptions. These types are considerably richer than
-those of core WebAssembly, but would not typically be enough for a full fledged
-programming language -- that is not the purpose.
+allow API designers to express types of data and function values in a way that
+is suitable for module-level descriptions. These types are considerably richer
+than those of core WebAssembly, but would not typically be enough for a full
+fledged programming language -- that is not the purpose.
 
 The space of types forms a a superset of the
 [core value types](https://webassembly.github.io/spec/core/syntax/types.html#value-types);
