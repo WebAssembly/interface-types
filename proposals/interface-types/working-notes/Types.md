@@ -32,6 +32,14 @@ The Interface types can partitioned into different groups, reflecting the kind o
 >This realization is not directly part of this specification, although there are
 >specific forms and instructions whose purpose is to aid in it.
 
+```
+interface-type ::= basictype
+  | structuretype 
+  | functionType
+  | protocol
+```
+
+
 ### Basic Value Types
 
 ```
@@ -141,7 +149,7 @@ sequencetype ::= sequence type
 A `record` type is a tuple composition of types. 
 
 ```
-#record ::= record [ vec(#interfacetype) ]
+#record ::= record [ vec(interfacetype) ]
 ```
 
 Fields in a record are accessed via their index; for convenience, field indices
@@ -156,7 +164,7 @@ record [ $name string $age u64]
 A `variant` consists of an ordered collection of alternative vectors of types.
 
 ```
-varianttype ::= oneof [ vec(vec(#interfacetype)) ]
+varianttype ::= oneof [ vec(vec(interfacetype)) ]
 ```
 
 Variants are accessed by their index in the vector of alternatives. For
@@ -190,7 +198,7 @@ its alternatives.
 A `functionType` denotes a function whose signature is expressed as IT types.
 
 ```
-functionType ::= [vec(#interfacetype)] -> [vec(#interfacetype)]
+functionType ::= [vec(interfacetype)] -> [vec(interfacetype)]
 ```
 
 The definition of a `functionType` mirrors that of the core WebAssembly form;
@@ -202,9 +210,10 @@ A protocol consists of a collection of function signatures. It is intended to
 denote a related set of functionality that a given entity may offer.
 
 ```
-protocol ::= [vec(identifier functionType)]
+protocol ::= protocol [vec(identifier functionType)]
 ```
 
->Discussion: Should members of a protocol be identified by name or by index?
+The different _methods_ in a protocol are indexed by integer offset; however,
+for convenience, names may be given to individual methods.
 
 
