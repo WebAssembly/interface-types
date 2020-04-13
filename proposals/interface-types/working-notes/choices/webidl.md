@@ -125,20 +125,21 @@ a vector of small integers or a large integer, for example).
 
 Although there are mechanisms within WebIDL for supporting variants, the form of
 these are not consistent with sum types in general. In particular, variant types
-in WebIDL are not associated with an explicit discrimination. This does not
-match the requirements for a language neutral mechanism for supporting algebraic
-data types.
+in WebIDL are not associated with explicit discriminators.
 
-On the other hand, modifying Web IDL to be consisten would be a necessarily
-breaking change in the design of Web IDL.
+Without there being a mandatory tag associated with each case in a variant it
+becomes impossible to consistently and automatically discriminate between the
+variants without the ability to inspect the data itself. This is straightforward
+in JavaScript but unreliable in other languages.
+
+On the other hand, modifying Web IDL to support such tags would be a necessarily
+breaking change in the design of Web IDL -- and all the APIs that use variants.
 
 The form of algebraic types envisaged in the Interface Types system is
 intentionally limited. For example, we do not permit _recursive_ types to be
 defined. This is in keeping with the vision of supporting APIs across ownership
-boundaries where complex data is likely to take limited form.[^This design
-choice may be revisited in future versions of the Interface Types specification
-if supporting structured types such as abstract XML and/or JSON become
-important.]
+boundaries where complex data is likely to take limited
+form.[^This design choice may be revisited in future versions of the Interface Types specification if supporting structured types such as abstract XML and/or JSON become important.]
 
 ### Working with WebIDL
 
