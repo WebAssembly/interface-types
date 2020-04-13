@@ -42,7 +42,7 @@ There remain several questions, which this note aims to address:
   
 ## WebIDL
 
-[Web IDL][WebIDL] is clearly an important IDL for Web APIs. And, since the web
+[Web IDL][] is clearly an important IDL for Web APIs. And, since the web
 platform is a crucial domain for WebAssembly, it seems necessary to address the
 question of "why not WebIDL?" for describing APIs in Interface Types.
 
@@ -118,14 +118,19 @@ for standardization nor for supporting the wider WebAssembly ecosystem.
 ### Algebraic Type Definitions
 
 The Interface Types language permits the definition of a limited form of
-_algebraic type definition_. This is, in part, to regularize concepts such as
-nullability and to permit limited forms of polymorphism (allowing a color to be
-named by a string, a vector of small integers or a large integer, for example).
+_algebraic types_ -- i.e., there is support for records (tuples) and variants
+(sums). This is, in part, to regularize concepts such as nullability and to
+permit limited forms of polymorphism (allowing a color to be named by a string,
+a vector of small integers or a large integer, for example).
 
-WebIDL explicitly prohibits the formation of new types; indeed it uses type
-unions to achieve similar polymorphism. However, as we note above, not all
-programming languages support dynamic types or type unions; which makes it
-problematic to support such polymorphism.
+Although there are mechanisms within WebIDL for supporting variants, the form of
+these are not consistent with sum types in general. In particular, variant types
+in WebIDL are not associated with an explicit discrimination. This does not
+match the requirements for a language neutral mechanism for supporting algebraic
+data types.
+
+On the other hand, modifying Web IDL to be consisten would be a necessarily
+breaking change in the design of Web IDL.
 
 The form of algebraic types envisaged in the Interface Types system is
 intentionally limited. For example, we do not permit _recursive_ types to be
