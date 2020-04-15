@@ -24,7 +24,7 @@ specified in a [custom section] and this feature can be polyfilled using the
 
 This proposal is motivated by 3 distinct problems:
 
-**Optimizing calls to Web APIs**
+### Optimizing calls to Web APIs
 
 With the [reference types] proposal, WebAssembly code can pass around arbitrary
 JavaScript values using the [`anyref`] type. By default, JavaScript
@@ -54,7 +54,7 @@ optimizing engine can then compile the declarative, statically-typed interface
 adapters into efficient stubs that call more-directly into the API's
 implementation.
 
-**Enabling "shared-nothing linking" of WebAssembly modules**
+### Enabling "shared-nothing linking" of WebAssembly modules
 
 While WebAssembly intentionally supports [dynamic linking], in which multiple
 instances share the same memory and table, emulating [native dynamic linking],
@@ -80,7 +80,7 @@ linear memory, modules can use the wasm engine to take care of copying data
 between two modules' linear memories while allowing both modules to
 maintain full encapsulation.
 
-**Defining language-neutral interfaces like WASI**
+### Defining language-neutral interfaces like WASI
 
 While many [WASI] signatures can be expressed in terms of `i32`s and,
 in the future, references to [type imports], there is still a need for WASI
