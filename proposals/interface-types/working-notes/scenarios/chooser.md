@@ -10,9 +10,13 @@ Keeping track of memory that is allocated in order to allow string processing
 can be challenging. This example illustrates an extreme case that involves
 non-determinism.
 
-This scenario is based on the idea of using run-time information in order to
-control the flow of information. In particular, consider the C++ chooser
-function:
+This scenario is a model of many situations where the actual flow of data
+between a call and callee is very difficult to predict. A consequence of that is
+that managing memory where one cannot predict which allocated blocks may be
+freed when becomes a challenge.
+
+Our exemplar for this is the non-deterministic C++ chooser function; which
+(might) return one of its `string` arguments as its return value:
 
 ```C++
 typedef std::shared_ptr<std::string> shared_string;
@@ -28,8 +32,6 @@ we want to expose it using Interface Types. Specifically, there are two
 resources entering the function, with just one leaving. However, when exposed as
 an Interface Type function, all these resources must be created and properly
 disposed of within the adapter code itself.
-
-This note focuses on the techniques that enable this to be achieved reliably.
 
 ## Exporting the Chooser
 
