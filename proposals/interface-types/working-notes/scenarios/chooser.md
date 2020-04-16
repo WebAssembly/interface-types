@@ -7,13 +7,12 @@ of using Interface Types to export and import functions.
 ## Introduction
 
 Keeping track of memory that is allocated in order to allow string processing
-can be challenging. This example illustrates an extreme case that involves
-non-determinism.
+can be challenging. This example illustrates an extreme case that involves the
+non-deterministic computation of string values.
 
 This scenario is a model of many situations where the actual flow of data
-between a call and callee is very difficult to predict. A consequence of that is
-that managing memory where one cannot predict which allocated blocks may be
-freed when becomes a challenge.
+between a call and callee can be very difficult to predict. A consequence of
+that is that one cannot easily predict when given allocated blocks may be freed.
 
 Our exemplar for this is the non-deterministic C++ chooser function; which
 (might) return one of its `string` arguments as its return value:
@@ -26,12 +25,16 @@ shared_string nondeterministic_choice(shared_string one, shared_string two) {
 }
 ```
 
-This function takes two string arguments and returns one of them. Regardless of
-the merits of this particular function, it sets up significant challenges should
-we want to expose it using Interface Types. Specifically, there are two
-resources entering the function, with just one leaving. However, when exposed as
-an Interface Type function, all these resources must be created and properly
-disposed of within the adapter code itself.
+This function takes two string arguments and returns one of them -- at
+random. It uses C++ `shared_ptr` structures to try to avoid any unnecessary
+copying; whilst also potentially allowing the callee to keep hold of its input
+arguments.
+
+Regardless of the merits of this particular function, it sets up significant
+challenges should we want to expose it using Interface Types. Specifically,
+there are two resources entering the function, with just one leaving. However,
+when exposed as an Interface Type function, all these resources must be created
+and properly disposed of within the adapter code itself.
 
 ## Exporting the Chooser
 
@@ -43,7 +46,6 @@ takes two `string`s and returns one:
   (param $left string)
   (param $right string)
   (result string)
-  ...
 )
 ```
 
@@ -127,8 +129,8 @@ end
 ```
 
 For clarity, we separate out two helper functions -- `sharedalloc-x` and
-`stralloc-x` -- whose role is to create a shared pointer pair and to instantiate
-a memory string from an Interface Types's `string` entity.
+`stralloc-x` -- whose role respectively is to create a shared pointer pair and
+to instantiate a memory string from an Interface Types's `string` entity.
 
 >Note the `-x` suffix signals that these functions are part of the exporting
 >module.
@@ -234,6 +236,10 @@ lower the return value:
 Compared to the export adapter, the import adapter is very straightforward. This
 is because we require the caller -- a core wasm function -- to take
 responsibility for the argument strings and for the returned string.
+
+>Note that the `stralloc-i` is functionally identical to its counterpart
+>`stralloc-x` -- except that it operates within the import module on the
+>latter's memory.
 
 ## Fusing adapters
 
