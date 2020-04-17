@@ -21,7 +21,7 @@ Our exemplar for this is the non-deterministic C++ chooser function; which
 typedef std::shared_ptr<std::string> shared_string;
 
 shared_string nondeterministic_choice(shared_string one, shared_string two) {
-  return random() > 0.5 ? std::move(one) : std_move(two);
+  return random() > 0.5 ? std::move(one) : std::move(two);
 }
 ```
 
@@ -98,7 +98,6 @@ count and a raw pointer to the resource.
 
   local.get $ptr
   owned.release              ;; access pointer and remove ownership
-  i32.const 1                ;; initial reference count of 1
   call-export "shared-builder-x" ;; make it a shared ptr pair
   own (i32)                  ;; re-own it, with a different destructor
     call-export "shared-release-x"
@@ -117,7 +116,7 @@ end
         (local.get $left)))
     (invoke-func $sharedalloc-x   ;; make it a shared ptr
       (invoke-func $stralloc-x
-        local.get $right)))
+        (local.get $right))))
   own (i32)               ;; own the result
     call-export "shared-release-x"    ;; will eventually call to free string
   end
@@ -170,6 +169,10 @@ Interface Type functions:
 In practice there would likely be additional support functions -- such as a
 version of accessing a shared resource whilst incrementing reference
 count. However, we do not need them in this scenario.
+
+>Note: We do not give the code for these helper functions. We expect that, in
+>practice, compiler tool chains will construct a range of common helper
+>functions that act to reduce the length of individual adapter.
 
 ## Calling the chooser
 
@@ -268,7 +271,7 @@ being combined with one that has some complexity:
           (local.get $left)))
       (invoke-func $sharedalloc-x   ;; make it a shared ptr
         (invoke-func $stralloc-x
-          local.get $right)))
+          (local.get $right))))
     own (i32)               ;; own the result
       call-export "shared-release-x"    ;; will eventually call to free string
     end
@@ -310,7 +313,6 @@ instructions:
       local.get $lsize
       memory.copy "mem-i" "mem-x" ;; copy string across
       local.get $ptr
-      i32.const 1                ;; initial reference count of 1
       call-export "shared-builder-x" ;; make it a shared ptr pair
       local.tee $o1
     end
@@ -328,7 +330,6 @@ instructions:
           local.get $rsize
           memory.copy "mem-i" "mem-x" ;; copy string across
           local.get $ptr
-          i32.const 1                ;; initial reference count of 1
           call-export "shared-builder-x" ;; make it a shared ptr pair
           local.tee $o2
         end
@@ -376,7 +377,7 @@ Note that the various `owned.access` instructions disappear at this point.
 In this case, the `$lp` and `$rp` values have no mention after the call to
 `"nondterministic_choice"`, and so we can move the `"shared-release"` calls to
 just after that call. Similarly, the release of the return value can be
-performed after returned string has been copied into the importing module:
+performed after returned string has been copied into the importing module.
 
 For simplicity, we migrated all the deallocations to the end of the fused
 adapter. In some situations, for example when processing arrays, we may wish to
