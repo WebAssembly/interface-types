@@ -139,7 +139,7 @@ it:
   let (result u32) (local $tgt (owned i32))
     local.get $str
     local.get $tgt
-	owned.access
+    owned.access
     utf8.from.string "memx"
     call-export "countCodes_imp"
     u32.from.i32
@@ -169,9 +169,9 @@ There is a lot going on here, so we will take this slowly:
    WebAssembly module.
 1. Since we want to avoid a memory leak, we want to arrange for the allocated
    memory to be freed. We arrange for this to occur at the end of the adapter
-   function by using an `own` instruction block -- which when the memory can no
-   longet be access invokes its sub-block -- which releases the allocated memory
-   block.
+   function by using an `own` instruction block -- which, when the memory can no
+   longer be accessed, invokes its sub-block -- which releases the allocated
+   memory block.
 1. The call to `"ex:malloc"` (and the related call to `"ex:free"`) is using an
    instruction to _call the exported_ function `"ex:malloc"`. This is similar to
    a normal call to a local function -- except that, since the adapter lives
@@ -312,7 +312,7 @@ example, we can combine the import and export adapters for `countCodes`:
       let (result u32) (local $tgt (owned i32))
         local.get $str
         local.get $tgt
-	    owned.access
+        owned.access
         utf8.from.string "memx"
         call-export "ex:countCodes_impl"
         u32.from.i32
@@ -328,7 +328,7 @@ to release the memory allocated for the string.
 
 One straightfoward technique for this is to add additional local variables to
 the adapter function -- that are used to hold the references collected by the
-`own` instruction itself. 
+`own` instruction itself.
 
 At the same time, we can unwrap the various uses of `owned.access`, and invoke
 the wrapped code at the end of the combined adapter:
@@ -336,7 +336,7 @@ the wrapped code at the end of the combined adapter:
 ```
 (func $countCodes
   (param $ptr i32)(param $len i32) (result i32)
-  (local $m1 i32)
+  (local $m1 i32)  ;; Used for owned block
     local.get $ptr
     local.get $len
     string.from.utf8 "memi"
@@ -344,7 +344,7 @@ the wrapped code at the end of the combined adapter:
       local.get $str
       string.size
       call-export "ex:malloc"
-	  local.tee $m1
+      local.tee $m1   ;; store captured references for later
       let (result (u32) (local $tgt i32)
         local.get $str
         local.get $tgt
@@ -355,7 +355,7 @@ the wrapped code at the end of the combined adapter:
     end
     i32.from.u32
     local.get $m1
-    call-export "ex:free"
+    call-export "ex:free" ;; invoke owned block
 )
 ```
 
