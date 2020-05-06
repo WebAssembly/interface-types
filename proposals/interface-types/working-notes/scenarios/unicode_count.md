@@ -302,7 +302,7 @@ example, we can combine the import and export adapters for `countCodes`:
     local.get $ptr
     local.get $len
     string.from.utf8 "memi"
-    let (result i32)(local $str string)
+    let (result u32)(local $str string)
       local.get $str
       string.size
       call-export "ex:malloc"
@@ -340,12 +340,12 @@ the wrapped code at the end of the combined adapter:
     local.get $ptr
     local.get $len
     string.from.utf8 "memi"
-    let (result i32)(local $str string)
+    let (result u32)(local $str string)
       local.get $str
       string.size
       call-export "ex:malloc"
       local.tee $m1   ;; store captured references for later
-      let (result (u32) (local $tgt i32)
+      let (result u32) (local $tgt i32)
         local.get $str
         local.get $tgt
         utf8.from.string "memx"
