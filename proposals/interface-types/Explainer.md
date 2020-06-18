@@ -343,7 +343,7 @@ The `string-to-memory` instruction then:
 
 An important technicality is that the `string` interface type is a sequence of
 [Unicode code points] while UTF-8 only encodes a sequence of [Unicode scalar values].
-Thus `string` allows [surrogate code points] which is imporant later in
+Thus `string` allows [surrogate code points] which is important later in
 [Web IDL Integration](#web-idl-integration). However, this also means that
 `string-to-memory` needs to define what happens if a surrogate code point is
 encountered while encoding. On the Web, UTF-8 [encoding][WHATWG Encoding] is
@@ -471,7 +471,7 @@ On the client side, we have an adapted module that imports and calls `get`:
 Looking at this example, an important question is: will the engine be able
 to copy directly between the caller's and callee's linear memories for the
 parameter and result strings? If `memory-to-string` had the same [eager evaluation]
-rules as all core wasm instructions, the answer would be "probaly not", because
+rules as all core wasm instructions, the answer would be "probably not", because
 any unknown side effects between `memory-to-string` and `string-to-memory` (such
 as the calls to `mem1Malloc` and `mem2Malloc`) could force the engine to
 conservatively make intermediate copies.
@@ -734,7 +734,7 @@ to compile adapter functions until [instantiation]-time, when both sides of an
 import are known to the engine. In contrast, core WebAssembly code is not
 declarative and is often compiled/cached before instantiation-time. This
 conflict would result in unpredictable and irregular performance and force
-engines to make unnecessary heuristic tradeoffs. Additionaly, the semantic
+engines to make unnecessary heuristic tradeoffs. Additionally, the semantic
 layering helps keep core wasm simple.
 
 
@@ -742,7 +742,7 @@ layering helps keep core wasm simple.
 [core spec]: https://webassembly.github.io/spec/core
 [Module Syntax]: https://webassembly.github.io/spec/core/syntax/modules.html#syntax-module
 [Old Module Type]: https://webassembly.github.io/spec/core/valid/modules.html#valid-module
-[New Module Type]: https://github.com/WebAssembly/module-types/blob/master/proposals/module-types/Overview.md
+[New Module Type]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Explainer.md
 [Instructions]: https://webassembly.github.io/spec/core/syntax/instructions.html
 [Control Instructions]: https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-control
 [Instantiation]: https://webassembly.github.io/spec/core/exec/modules.html#exec-instantiation
