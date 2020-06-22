@@ -813,7 +813,7 @@ layering helps keep core wasm simple.
 [WTF-8]: https://simonsapin.github.io/wtf-8/
 
 [WASI]: https://github.com/webassembly/wasi
-[`path_open`]: https://github.com/WebAssembly/WASI/blob/master/design/WASI-core.md#path_open
+[`path_open`]: https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#path_open
 
 [Embind]: https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html
 [wasm-bindgen]: https://github.com/rustwasm/wasm-bindgen
