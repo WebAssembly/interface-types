@@ -176,7 +176,9 @@ passing of compound values across shared-nothing boundaries.
 To properly address the above motivating use cases, there are some additional
 requirements which impact the set of available solutions:
 * A solution should allow a wide variety of value representations, avoiding
-  the need for intermediate (de)serialization steps.
+  the need for intermediate (de)serialization steps. Ideally, this would
+  include even lazily-generated data structures (e.g., via iterators,
+  generators or comprehensions).
 * A solution should not force the exclusive use of linear or [GC] memory.
 * A solution should allow efficient conversion to and from opaque host values
   that exist outside of any wasm memory when the host values are compatible.
@@ -565,7 +567,9 @@ categories:
 
 By having the conversion between `valtype` and `intertype` explicit and
 programmable, this proposal allows a wide variety of low-level representations
-to be lifted and lowered without any intermediate serialization step.
+to be lifted and lowered without any intermediate serialization step. This
+includes even data structures that are lazily- or dynamically-generated from
+constructs such as iterators, generators or comprehensions.
 
 #### Lifting and Lowering Integers
 
