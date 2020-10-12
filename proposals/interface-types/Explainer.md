@@ -252,7 +252,7 @@ abbreviations only exist in the concrete formats.
 ```
                                       string ≡ (list char)
                         (tuple <intertype>*) ≡ (record ("𝒊" <intertype>)*) for 𝒊=0,1,...
-                                        bool ≡ (variant (case "true") (case "false"))
+                                        bool ≡ (variant (case "false") (case "true"))
                               (enum <name>*) ≡ (variant (case <name>)*)
                         (option <intertype>) ≡ (variant (case "none") (case "some" <intertype>))
                         (union <intertype>*) ≡ (variant (case "𝒊" <intertype>)*) for 𝒊=0,1,...
