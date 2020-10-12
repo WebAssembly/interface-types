@@ -528,6 +528,30 @@ instances have an *adapter-instance type*:
 )
 ```
 
+In the above example, because the `run` adapter function does no actual
+adaptation, the underlying `$core.$run` function could just as well have
+been exported directly:
+```wasm
+(export "run" (func $core.$run))
+```
+According to [module linking], the dotted notation `$core.$run` is syntactic
+sugar for an [alias definition]:
+```wasm
+(alias $core_run (func $core $run))
+(export "run" (func $core_run))
+```
+With this change to the above adapter module, the adapter-module type would
+become:
+```wasm
+(adapter_module
+  (import "print" (adapter_func (param string)))
+  (export "run" (func))
+)
+```
+This example demonstrates how adapter-module types can contain a *mix* of both
+core and adapter definitions. Similarly, core memories, tables and globals can
+be imported and exported.
+
 
 ### Lifting and Lowering Instructions
 
@@ -1487,6 +1511,7 @@ IDL APIs as built-in modules that can be directly imported.
 [Multi-memory]: https://github.com/webassembly/multi-memory
 
 [Module Linking]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Explainer.md
+[Alias Definition]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Explainer.md#instance-imports-and-aliases
 [Shared-everything Dynamic Linking]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Explainer.md#shared-everything-dynamic-linking
 [Shared-everything-example]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Example-SharedEverythingDynamicLinking.md
 
