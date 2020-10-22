@@ -1484,6 +1484,7 @@ IDL APIs as built-in modules that can be directly imported.
 * types for describing handles to resources that address resource lifetime (see also [#87](https://github.com/WebAssembly/interface-types/issues/87))
 * optional/default-valued record fields or function parameters
 * how precisely calls to host functions work
+* ability to import/export interface *values* (as opposed to adapter functions), thereby allowing adapter modules to import configuration data and [JSON modules]
 
 
 [Core Spec]: https://webassembly.github.io/spec/core
@@ -1532,6 +1533,7 @@ IDL APIs as built-in modules that can be directly imported.
 [get-originals]: https://github.com/domenic/get-originals/
 
 [Records and Tuples]: https://github.com/tc39/proposal-record-tuple
+[JSON Modules]: https://github.com/tc39/proposal-json-modules
 
 [Operation]: https://heycam.github.io/webidl/#dfn-create-operation-function
 [Setter]: https://heycam.github.io/webidl/#dfn-attribute-setter
