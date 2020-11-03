@@ -86,89 +86,58 @@ than the JIT-optimized glue code.
 Ideally, Web API calls would be statically type checked and passed Web IDL
 values created directly by wasm.
 
-### Embedding WebAssembly in Language Runtimes
+### Creating Maximally-Reusable Modules
 
-When WebAssembly is embedded in a language (meaning that the language is not
-compiled to wasm but, rather, the language runs in its own native runtime and
-interacts with wasm through a language-specific API&mdash;the primary example
-being [JavaScript][JS API])&mdash;the same low-level/high-level value impedence
-mismatch mentioned above arises when attempting to call between wasm and the
-embedder language.
+To fully realize the potential of WebAssembly, it should be possible for a
+WebAssembly module author to target an output profile that maximizes the number
+of clients that can reuse their module (where a "client" can be another
+WebAssembly module, a native language runtime that embeds WebAssembly or some
+other kind of host system). As part of this maximum-reuse profile, the language
+and toolchain that a module author uses should be kept an encapsulated
+module implementation detail allowing module clients to independently choose
+their own language and toolchain. This in turns allows for the emergence of a
+single, unified WebAssembly ecosystem of maximally-reusable modules. In
+contrast, the path of least resistance, and thus the default outcome if no
+effort is made to the contrary, is for the WebAssembly ecosystem to be
+fragmented along the lines of language and toolchain.
 
-Similar to the optimizing-Web-APIs use case, one solution to this problem is to
-generate glue code in the embedder language, using the glue code to read and
-write wasm's low-level memory through a low-level embedding API. However, if
-there are M embedder languages and N reusable wasm modules, this requires
-creating O(M×N) glue code bindings. Ideally, the required effort would be
-O(M+N), with the M embedder languages each defining a generic binding to a set
-of high-level types and N wasm modules generically defining their interface in
-terms of these high-level types.
+It's important to scope this use case to avoid aiming for automatic seamless
+integration between arbitrary languages, as this has generally been shown to be
+an intractable problem. Instead, we can observe the general success of
+**shared-nothing** architectures in allowing unrelated languages to
+interoperate. Popular examples include Unix pipes connecting separate processes
+and HTTP APIs connecting separate (micro)services. A shared-nothing
+architecture partitions a whole application into multiple isolated units that
+encapsulate their mutable state; shared mutable state is either banned or
+significantly restricted. When multiple languages are used, then, it's natural
+to put separate languages into separate isolated units. In raw WebAssembly
+terms, a natural shared-nothing unit is a module which only imports and exports
+functions and immutable values, but not memories, tables or mutable globals.
 
-While seamless cross-language interoperability is an elusive goal for which
-wasm offers no new magic bullets, we can observe the general success of
-cross-language approaches that keep the language boundaries explicit and
-language state separate by copying values at the language boundary. Examples
-include Unix pipes connecting separate processes by passing text and HTTP APIs
-connecting separate microservices by passing [Protocol Buffers]. While these
-examples involve interprocess communication, which adds overhead due to system
-calls and context switches, wasm is able to use its lightweight sandbox to
-efficiently pass values to and from the embedder language on a single,
-synchronous callstack.
+While existing shared-nothing architectures tend to incur communication
+overhead due to system calls, context switches and extra copying, WebAssembly
+can leverage its lightweight sandbox and use synchronous function calls to
+avoid these sources of overhead (leaving asynchronous communication to be
+provided by the host via API). Thus, instead of pipe or channel APIs,
+shared-nothing WebAssembly modules can use function imports to directly call
+across shared-nothing boundaries. In OS terms, this is analogous to the
+[synchronous IPC] used for performance in some microkernels. However, this
+approach has an obvious challenge in WebAssembly today: without a shared linear
+memory, how can a function call pass values larger than the fixed-size core
+wasm types (`i32`, `i64`, etc)?
 
-### Shared-Nothing Linking
-
-While WebAssembly supports [native dynamic linking]  (a.k.a.
-[shared-everything dynamic linking]), this type of linking is more fragile:
-* Modules must carefully coordinate (at the toolchain and source level) to
-  share data and generally avoid clobbering each other.
-* Modules must agree on versions of common shared libraries since the
-  libraries' state is shared.
-* Corruption in one module can affect other modules, with some bugs
-  manifesting only when the unfortunate application developer uses unrelated
-  modules together in a particular way.
-* Modules are less able to encapsulate, leading to unwanted representation
-  dependencies or violations of the Principle of Least Authority.
-
-In contrast, "shared-nothing" linking refers to a linking scheme in which
-modules encapsulate their own state (by neither importing nor exporting mutable
-objects like memories, tables and globals). In doing so, shared-nothing linking
-removes the sources of fragility listed above. Unfortunately, there is
-currently no host-independent way to implement even basic shared-nothing
-linking operations like passing an array of bytes between modules.
-
-Shared-nothing linking should not be mutually exclusive with shared-everything
-linking, however. Just because we don't want to share state doesn't mean we
-don't want to share code: code is stateless and sharing it reduces resource
-usage. For example, it would be desirable to share libc *code* without sharing
-libc *state*. In other cases, shared-everything linking may be necessary for
-performance and/or backwards-compatibility reasons. For example, a plugin-based
-video-processing pipeline may need to define a shared-everything interface
-between the driver module and all the plugin modules.
-
-Thus, "shared-nothing" and "shared-everything" shouldn't represent *two
-opposing linking schemes* but, rather, *two levels in a single linking scheme*
-where shared-everything linking is the lower-level, creating subgraphs of
-instances that appear as single shared-nothing instances to the upper level.
-
-The module linking proposal contains an [example][shared-everything-example] 
-showing how module linking can be used to create two shared-nothing units
-that still share module code:
-
-<p align="center"><img src="./shared-everything-dynamic-linking.svg" width="600"></p>
-
-However, the module linking proposal wasn't able to show how a third module
-could import and use `zipper` and `imgmgk` directly since there is no way to
-communicate compound values in the absence of shared memory. 
-
-<p align="center"><img src="./shared-everything-and-shared-nothing.svg" width="600"></p>
-
-Here, the shared-nothing units are circumscribed with red rectangles, the
-shared-nothing imports have green arrows and the shared-everything imports have
-blue arrows.
-
-Ideally, this proposal would allow this kind of mixed
-shared-everything/shared-nothing linking, using the wasm engine to manage the
-passing of compound values across shared-nothing boundaries.
+One possible solution would be to leverage the upcoming [GC] proposal to pass
+immutable GC objects across shared-nothing boundaries. However, this would add
+an unnecessary dependency on GC when the clients and producers did not
+otherwise require GC. Moreover, such an approach would require needless extra
+copying and garbage when both sides used linear memory or mutable GC memory.
+Lastly, while the GC proposal has types like `struct` and `array` that are
+higher-level than linear memory, the GC proposal still seeks to be as close to
+an assembly language as safety, portability and performance allow. Thus,
+language and toolchain details are still likely to bubble up into a module's
+public interface. Ideally, shared-nothing modules would be able to define their
+function imports and exports using expressive high-level value types without
+requiring GC or incurring extra copies or garbage.
 
 
 ## Additional Requirements
@@ -188,6 +157,9 @@ requirements which impact the set of available solutions:
   much compiler magic.
 * A solution should allow efficient and robust backwards-compatible evolution
   of API signatures.
+* The proposal should still allow for the use of "shared-everything" linking
+  (analogous to [native dynamic linking]) as a low-level mechanism for
+  factoring common library code out of shared-nothing modules.
 
 
 ## Proposal
@@ -1133,6 +1105,16 @@ around the lack of cyclic imports.
   (instance $core (instantiate $CORE_B (instance $libc) (adapter_func $adapter.$getBytes)))
 )
 ```
+Another thing that this example illustrates is the complementary use of
+"shared-everything" and "shared-nothing" linking described in the 
+[Additional Requirements section](#additional-requirements). In particular,
+`$LIBC` is a shared-everything library that factors out the common code from
+the two shared-nothing modules `$A` and `$B`. Note that only the stateless
+code of `$LIBC` is shared; `$A` and `$B` get their own private `$LIBC`
+instances. Thus, from all external appearances, `$A` and `$B` produce
+shared-nothing instances despite using shared-everything linking as an
+implementation detail.
+
 
 ## Adapter Fusion
 
@@ -1413,12 +1395,13 @@ adapter module can import helper functions for producing and consuming
 replaced by `(ref $Import)`s which could eliminate dynamic type checks in
 adapter functions at instantiation-time.
 
+### Creating Maximally-Reusable Modules (revisited)
 
-### Embedding WebAssembly in Language Runtimes (revisited)
-
-When adapter functions are exposed to an embedder language, the copy semantics
-of interface types provides the embedder language significant flexibility for
-how to coerce values to and from interface values.
+To create a maximally-reusable module, a developer would produce an adapter
+module that exclusively uses interface types in its signature to create a
+shared-nothing interface. The value semantics of interface types provide the
+client language significant flexibility in how to coerce to and from its
+native language values.
 
 For example, the [JS API] would be extended to provide the following coercions
 (in [`ToJSValue`] and [`ToWebAssemblyValue`]):
@@ -1447,16 +1430,11 @@ For example, the [JS API] would be extended to provide the following coercions
   to [User-Defined Type Guards]. For `variant`, coercing to and from an object
   of the form `{kind:'name', value:<payload>}` could potentially work.
 
-
-### Shared-Nothing Linking (revisited)
-
-As shown in the [end-to-end example](#an-end-to-end-example), adapter modules
-`$A` and `$B` both import the same shared-everything module `$LIBC` and create
-private instances via nested `instance` definitions. By doing this, `$A` and
-`$B` both define their own shared-nothing units that encapsulate memory while
-sharing `$LIBC` code. Using interface types, `$B` is able to shared-nothing-import
-`$A`. Thus, this proposal allows the mixed shared-everything/shared-nothing
-linking described in the use case.
+Note that the same coercions can be applied both when WebAssembly is embedded
+in a native JavaScript engine and when the client is JavaScript running as
+WebAssembly (on a host that does not include a JavaScript engine). In a similar
+manner, other high-level languages can define their own coercion semantics
+between interface values.
 
 
 ## FAQ
@@ -1583,10 +1561,10 @@ IDL APIs as built-in modules that can be directly imported.
 [Eager Evaluation]: https://en.wikipedia.org/wiki/Eager_evaluation
 [Lazy Evaluation]: https://en.wikipedia.org/wiki/Lazy_evaluation
 [SSA]: https://en.wikipedia.org/wiki/Static_single_assignment_form
-[Protocol Buffers]: https://en.wikipedia.org/wiki/Protocol_Buffers
 [Reaching Definitions]: https://en.wikipedia.org/wiki/Reaching_definition
 [UTF-8]: https://en.wikipedia.org/wiki/UTF-8
 [UTF-32]: https://en.wikipedia.org/wiki/UTF-32
 [Latin-1]: https://en.wikipedia.org/wiki/ISO/IEC_8859-1
 [ASCII]: https://en.wikipedia.org/wiki/ASCII
 [Amortized O(n)]: https://en.wikipedia.org/wiki/Dynamic_array#Geometric_expansion_and_amortized_cost
+[Synchronous IPC]: https://en.wikipedia.org/wiki/Microkernel#Inter-process_communication
