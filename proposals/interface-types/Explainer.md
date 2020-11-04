@@ -173,7 +173,7 @@ can be used in the new functions for producing and consuming the new types.
 To complement core wasm's set of *low-level* value types (`i32`, `i64`, ...),
 this proposal defines a new set of *high-level* value types called **interface
 types**. In the core spec, core value types are formally defined by the
-[`valtype`] grammar. For interface types, the analogus set is `intertype`,
+[`valtype`] grammar. For interface types, the analogous set is `intertype`,
 defined by the following grammar:
 ```
 intertype ::= f32 | f64
@@ -197,7 +197,7 @@ Additionally, while core wasm's `valtype` contains reference values which refer
 to mutable state, `intertype` compound values are transitively immutable. One
 important consequence of this distinction is that, while `valtype` reference
 subtyping is non-coerceive and constrained by low-level memory layout
-considerations, `intertype` subtyping can be highly coerceive, thereby allowing
+considerations, `intertype` subtyping can be highly coercive, thereby allowing
 flexible, backwards-compatible evolution of interface-typed APIs. Since copying
 is inherent in the use of interface types, coercions can be folded into the
 copy. A summary of the allowed coercions is given by the following table:
@@ -332,7 +332,7 @@ by the [module linking] proposal.
 
 Adapter functions are structured the same as core functions, with three main
 differences:
-* Adapter funtions are a different kind of definition than core functions so:
+* Adapter functions are a different kind of definition than core functions so:
    * In the text format, adapter functions start with `adapter_func` instead of
      `func`.
    * In the binary format, adapter functions go into a new adapter function
@@ -431,7 +431,7 @@ For example, a trivial example of an adapter module is:
   )
 )
 ```
-While this example shows that it's possibile to write a pure adapter module,
+While this example shows that it's possible to write a pure adapter module,
 the main point of an adapter module is to *adapt* the imports or exports of a
 *core* module. To do this, adapter modules use and extend the concepts added by
 the [module linking] proposal to *import* and *nest* core modules and then
@@ -559,7 +559,7 @@ it ::= u8 | s8 | u16 | s16 | u32 | s32 | u64 | s64
 where:
   - bitwidth(ct) >= bitwidth(it)
 ```
-For lifting, if `bitwidth(ct)` is greather than `bitwidth(it)`, then only the
+For lifting, if `bitwidth(ct)` is greater than `bitwidth(it)`, then only the
 least-significant `bitwidth(it)` bits of the `ct` value are used. For lowering,
 the bitwidth validation-time restriction ensures that out-of-range errors
 cannot occur. In both cases, the signedness of `ct` is implied by the sign of
@@ -569,7 +569,7 @@ Since there can be no dynamic allocation read lazily by integer lifting, there
 is no [destructor](#interface-values-have-destructors) immediate.
 
 As an example usage, the following adapter module converts the implicitly-signed
-`i32` into the explicitly-signed `u32`:
+`i32` into the explicitly-unsigned `u32`:
 ```wasm
 (adapter_module $ADAPTER
   (module $CORE
@@ -691,9 +691,13 @@ contiguous array as follows:
             (i32.add (local.get $ptr) (i32.const 4))
             (local.get $end)))
 )
+(adapter_func $free (param i32 i32)
+  (let (local $ptr i32) (local $end)
+    (call $libc.$free (local.get $ptr)))
+)
 (adapter_func $liftArray (param i32 i32) (result (list s32))
   (let (local $ptr i32) (local $end i32)
-    (return (list.lift (list s32) $done $liftElem (local.get $ptr) (local.get $end))))
+    (return (list.lift (list s32) $done $liftElem $free (local.get $ptr) (local.get $end))))
 )
 ```
 and lowered into a linked list of `i32`s as follows:
@@ -717,7 +721,8 @@ and lowered into a linked list of `i32`s as follows:
 ```
 If `$liftArray` is called in adapter module A to produce a `(list s32)` value
 that is passed to `$lowerLinkedList` in adapter module B, the net result will
-be to convert from A's array representation into B's linked-list representation.
+be to convert from A's array representation into B's linked-list representation
+and then free A's memory.
 
 ##### Optimization: Element Count
 
@@ -789,6 +794,10 @@ contiguous array as follows:
   end
 )
 ```
+Here, the then-branch takes advantage of the `i32` `$count` produced by
+`list.has_count` to pre-allocate the `$dst` array. Without a count, the
+else-branch must use a dynamic reallocation strategy (which is elided here for
+brevity, but shown in full in the [end-to-end example below](#an-end-to-end-example)).
 
 ##### Optimization: Canonical Representation
 
@@ -898,8 +907,8 @@ As an example, given the following type definition of a record type:
 ```wasm
 (type $Coord (record (field "x" s32) (field "y" s32)))
 ```
-a `$Coord` value can be lifted from a struct containing two `i32`s in linear
-memory by the following adapter functions:
+a `$Coord` value can be lifted from a C `struct` containing two `i32`s in
+linear memory by the following adapter functions:
 ```wasm
 (adapter_func $liftFields (param i32) (result s32 s32)
   (let (local $ptr i32) (result s32 s32)
@@ -1364,7 +1373,7 @@ semantic equivalence may not be possible due to JS semantic corner cases (e.g.,
 NaN canonicalization of `unrestricted double` or prototype-chain walking for
 missing `dictionary` properties). However, in non-pathological scenarios, this
 equivalence must be maintained to ensure that JS virtualization of Web APIs
-still works effectively (so that a JS function can polyfill, fix, attentuate,
+still works effectively (so that a JS function can polyfill, fix, attenuate,
 censor, virtualize, etc. a Web IDL function).
 
 Given that, the following Web IDL/interface types would match:
