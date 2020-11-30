@@ -1472,7 +1472,6 @@ IDL APIs as built-in modules that can be directly imported.
 * optional/default-valued record fields or function parameters
 * how precisely calls to host functions work
 * ability to import/export interface *values* (as opposed to adapter functions), thereby allowing adapter modules to import configuration data and [JSON modules]
-* address what happens when a trap, exception or event unwinds into an adapter function (e.g., lockdown semantics)
 
 
 [Core Spec]: https://webassembly.github.io/spec/core
