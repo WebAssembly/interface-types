@@ -407,9 +407,9 @@ def lift(direction, src, ty, values):
       len = values.assert_next(i32)
       if handle == 0:
         assert_or_trap(offset + len * size(direction, $ty) <= src.memory.len)
-        yield(Buffer(src, offset, len, $ty))
+        yield(Buffer(src, offset, len, ty))
       else:
-        buffer = TABLES.get_buffer(handle, src, $ty).clone()
+        buffer = TABLES.get_buffer(handle, src, ty).clone()
         assert_or_trap(offset + len <= buffer.len)
         buffer.offset += offset * size(direction, $ty)
         buffer.len = len
@@ -922,7 +922,7 @@ class Buffer:
   src: Instance     # where this buffer is located
   offset: i32       # byte offset in `src`'s memory
   len: i32          # length in units of `self.ty`
-  ty: Type          # the type of item in this buffer
+  ty: Type          # either push-buffer<T> or pull-buffer<T>
 ```
 
 ## Adapter fusion
@@ -1168,25 +1168,33 @@ The `push` and `pull` functions are implemented as:
 ```
 def push(src, idx, ptr, len):
   buffer = TABLES.get_buffer(idx, src)
-  assert_or_trap(ptr + len * size("export", buffer.ty) <= src.memory.len)
+  ty = match buffer.ty {
+    push-buffer<T> => T,
+    _ => assert_or_trap(false)
+  }
+  assert_or_trap(ptr + len * size("export", ty) <= src.memory.len)
   amt = min(len, buffer.len)
   for i in 0..amt:
-    gen = lift_from_memory("export", src, buffer.ty, ptr)
+    gen = lift_from_memory("export", src, ty, ptr)
     lower_to_memory("export", buffer.src, buffer.offset, gen)
-    ptr += size("export", buffer.ty)
-    buffer.offset += size("export", buffer.ty)
+    ptr += size("export", ty)
+    buffer.offset += size("export", ty)
     buffer.len -= 1
   return amt
 
 def pull(dst, idx, ptr, len):
   buffer = TABLES.get_buffer(idx, dst)
-  assert_or_trap(ptr + len * size("import", buffer.ty) <= dst.memory.len)
+  ty = match buffer.ty {
+    pull-buffer<T> => T,
+    _ => assert_or_trap(false)
+  }
+  assert_or_trap(ptr + len * size("import", ty) <= dst.memory.len)
   amt = min(len, buffer.len)
   for i in 0..amt:
-    gen = lift_from_memory("import", buffer.src, buffer.ty, buffer.offset)
+    gen = lift_from_memory("import", buffer.src, ty, buffer.offset)
     lower_to_memory("import", dst, ptr, gen)
-    ptr += size("import", buffer.ty)
-    buffer.offset += size("import", buffer.ty)
+    ptr += size("import", ty)
+    buffer.offset += size("import", ty)
     buffer.len -= 1
   return amt
 ```
