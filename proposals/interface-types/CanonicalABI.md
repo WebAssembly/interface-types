@@ -253,24 +253,24 @@ def lift(direction, src, ty, values):
     f64 => yield(values.assert_next(wasm_f64)),
 
     s8 => {
-      val = values.assert_next(wasm_i32)
+      val = values.assert_next(wasm_i32) as s32
       assert_or_trap(val >= -128 && val <= 127)
       yield(val as s8)
     }
 
     s16 => {
-      val = values.assert_next(wasm_i32)
+      val = values.assert_next(wasm_i32) as s32
       assert_or_trap(val >= -32768 && val <= 32767)
       yield(val as s16)
     }
 
     u8 => {
-      val = values.assert_next(wasm_i32)
+      val = values.assert_next(wasm_i32) as u32
       assert_or_trap(val >= 0 && val <= 255)
       yield(val as u8)
     }
     u16 => {
-      val = values.assert_next(wasm_i32)
+      val = values.assert_next(wasm_i32) as u32
       assert_or_trap(val >= 0 && val <= 65535)
       yield(val as u16)
     }
@@ -281,7 +281,7 @@ def lift(direction, src, ty, values):
     u64 => yield(values.assert_next(wasm_i64) as u64),
 
     char => {
-      codept = values.assert_next(wasm_i32)
+      codept = values.assert_next(wasm_i32) as u32
       # generate a trap if `codept` is out of bounds
       assert_or_trap(codept < 0xD800 || (codpt >= 0xE000 && codept <= 0x10FFFF))
       yield(codept as char)
@@ -300,8 +300,8 @@ def lift(direction, src, ty, values):
     # instead follow the `TextDecoder.decode` semantics which is what WTF-16
     # languages like JS/Java/C# will want.
     string => {
-      ptr = values.assert_next(wasm_i32)
-      len = values.assert_next(wasm_i32)
+      ptr = values.assert_next(wasm_i32) as u32
+      len = values.assert_next(wasm_i32) as u32
       assert_or_trap(ptr + len <= src.memory.len)
 
       val = read_utf8_string(src, ptr, len)
@@ -311,8 +311,8 @@ def lift(direction, src, ty, values):
     }
 
     list<$ty> => {
-      ptr = values.assert_next(wasm_i32)
-      len = values.assert_next(wasm_i32)
+      ptr = values.assert_next(wasm_i32) as u32
+      len = values.assert_next(wasm_i32) as u32
 
       assert_or_trap(ptr + len * size(direction, $ty) <= src.memory.len)
       yield(list_start<$ty>(len))
