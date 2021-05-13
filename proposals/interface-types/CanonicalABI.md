@@ -320,7 +320,7 @@ def lift(direction, src, ty, values):
       for i in 0..len:
         yield from lift_from_memory(direction, src, $ty, ptr + i * size(direction, $ty))
       if direction == "export":
-        src.canonical_abi_free(ptr, len * size(direction, $ty), align(direction, $ty))
+        src.canonical_abi_free(ptr, len * size(direction, $ty), align($ty))
       yield(list_done<$ty>)
     }
 
@@ -442,9 +442,9 @@ def size(direction, type):
     record $fields =>
       s = 0
       for field in $fields
-        s = align_to(s, align(direction, field))
+        s = align_to(s, align(field))
         s += size(direction, field)
-      align_to(s, align(direction, record $fields))
+      align_to(s, align(record $fields))
     variant $cases =>
       s = 0
       discrim = variant_discriminant($cases)
@@ -461,7 +461,7 @@ def size(direction, type):
       else:
         size(i32)
 
-def align(direction, type):
+def align(type):
   match type
     f32 = 4
     f64 = 8
@@ -480,13 +480,13 @@ def align(direction, type):
     record $fields =
       a = 1
       for field in $fields
-        a = max(a, align(direction, field))
+        a = max(a, align(field))
       a
     variant $cases =
-      a = align(direction, variant_discriminant($cases))
+      a = align(variant_discriminant($cases))
       for case in $cases
         if case:
-          a = max(a, align(direction, case))
+          a = max(a, align(case))
       a
     handle => align(i32)
     push-buffer | pull-buffer => align(i32)
@@ -541,7 +541,7 @@ def lift_from_memory(direction, src, ty, ptr):
       yield(record_start<$fields>)
       offset = 0
       for $field in $fields:
-        offset = align_to(offset, align(direction, $field))
+        offset = align_to(offset, align($field))
         yield from lift_from_memory(direction, src, ptr + offset, $field)
         offset += size(direction, $field)
       yield(record_end<$fields>)
@@ -576,7 +576,7 @@ def lift_from_memory(direction, src, ty, ptr):
           # we align the pointer to the whole variant's alignment to ensure that
           # all payloads start at the same address.
           if payload:
-            offset = align_to(offset, align(direction, variant $cases))
+            offset = align_to(offset, align(variant $cases))
             yield from lift_from_memory(direction, dst, ptr + offset, payload)
 
           yield(variant_end<$cases>)
@@ -650,7 +650,7 @@ def lower(direction, dst, gen):
     # the host can retain the raw pointers into the wasm module's memory if it
     # likes.
     list_start<$ty>(len) => {
-      base = dst.canonical_abi_realloc(NULL, 0, align(direction, $ty), len * size(direction, $ty))
+      base = dst.canonical_abi_realloc(NULL, 0, align($ty), len * size(direction, $ty))
       assert_or_trap(base + len * size(direction, $ty) <= dst.memory.len)
       ptr = base
       for _ in 0..len:
@@ -751,7 +751,7 @@ def lower_to_memory(direction, dst, ptr, gen):
     record_start<$fields> => {
       offset = 0
       for $field in $fields:
-        offset = align_to(offset, align(direction, $field))
+        offset = align_to(offset, align($field))
         lower_to_memory(direction, dst, ptr + offset, gen)
         offset += size(direction, $field)
       assert_eq(gen.next(), record_end<$fields>) # true by construction
@@ -782,7 +782,7 @@ def lower_to_memory(direction, dst, ptr, gen):
       # we align the pointer to the whole variant's alignment to ensure that
       # all payloads start at the same address.
       if $cases[discrim].has_payload:
-        offset = align_to(offset, align(direction, variant $cases))
+        offset = align_to(offset, align(variant $cases))
         lower_to_memory(direction, dst, ptr + offset, gen)
 
       assert_eq(gen.next(), variant_end<$cases>) # true by construction
