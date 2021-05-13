@@ -296,7 +296,7 @@ def lift(direction, src, ty, values):
     # but another option is to match `TextDecoder.decode` on the web with
     # replacement error mode which produces replacement characters.
     #
-    # Currently it's expected taht `read_utf8_string` will not trap and will
+    # Currently it's expected that `read_utf8_string` will not trap and will
     # instead follow the `TextDecoder.decode` semantics which is what WTF-16
     # languages like JS/Java/C# will want.
     string => {
