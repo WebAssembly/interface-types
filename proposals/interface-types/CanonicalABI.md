@@ -1051,7 +1051,7 @@ calling the canonical ABI) must export one or both of the following functions:
 
 The `canonical_abi_realloc` is provided for use today and to future-proof the
 canonical ABI for a future where the canonical ABI is not the only ABI (e.g.
-full expressive adapter functions). Realloc takes three arguments: the original
+full expressive adapter functions). Realloc takes four arguments: the original
 pointer, the original size, the original alignment, and the new desired size. It
 returns an `i32` which is a pointer in memory which is valid for the new
 desired size of bytes. This function will trap if memory allocation failed and
