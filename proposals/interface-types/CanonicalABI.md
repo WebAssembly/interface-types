@@ -291,14 +291,10 @@ def lift(direction, src, ty, values):
     # imports it's assumed the memory is still owned by the caller WebAssembly
     # module.
     #
-    # Also note that `read_utf8_string` here is expected to validate that the
-    # input read is indeed valid utf-8. One option is to trap on invalid utf-8,
-    # but another option is to match `TextDecoder.decode` on the web with
-    # replacement error mode which produces replacement characters.
-    #
-    # Currently it's expected that `read_utf8_string` will not trap and will
-    # instead follow the `TextDecoder.decode` semantics which is what WTF-16
-    # languages like JS/Java/C# will want.
+    # It's expected that `read_utf8_string` will not trap and will instead
+    # follow the `TextDecoder.decode` semantics which is what WTF-16 languages
+    # like JS/Java/C# will want. This means that invalid utf-8 encodings will
+    # produce replacement characters.
     string => {
       ptr = values.assert_next(wasm_i32) as u32
       len = values.assert_next(wasm_i32) as u32
