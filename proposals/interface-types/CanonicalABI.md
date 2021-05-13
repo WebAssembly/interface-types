@@ -813,10 +813,9 @@ part of the canonical ABI:
   each handle type, and indices are managed by allocating from these tables.
 
 * Indices to refer to resources are handled in a LIFO fashion. Indexes are
-  allocated starting from one (ensuring 0/`NULL` is always an invalid handle)
-  and increasing afterwards as more space is required. When an index is removed
-  (because an instance said it no longer needs a resource, then that index is
-  queued up as the next to be allocated).
+  allocated starting from zero and increasing afterwards as more space is
+  required. When an index is removed (because an instance said it no longer
+  needs a resource, then that index is queued up as the next to be allocated).
 
 * There can be at most 2^31-1 values of any handle type for a module. This is
   done so indices can fit into a hypothetical `i31ref` in the future.
@@ -835,15 +834,15 @@ class TABLES:
   # Note that 1 is added here to never allocate the 0 index.
   def insert(self, resource, handle, instance) -> i32:
     handle.refcnt += 1
-    return self.instances[(instance, resource)].push(handle) + 1
+    return self.instances[(instance, resource)].push(handle)
 
   # This function will look up the value `idx` referenced by `instance`. If an
   # entry of type `resource` exists then the original value is returned.
   #
   # If `instance` does not have any valid entry for `idx` then this will trap.
   def get(self, resource, idx, instance) -> Handle:
-    assert_or_trap(idx > 0)
-    return self.instances[(instance, resource)].get(idx - 1)
+    assert_or_trap(idx >= 0)
+    return self.instances[(instance, resource)].get(idx)
 
   # Removes access to `instance`'s access to the handle `idx` which should point
   # to `resource`.
@@ -867,14 +866,14 @@ class TABLES:
   # Flags that `instance` has access to the `buffer` provided, returning a
   # nonzero index which the receiving module can use to refer to this buffer.
   def insert_buffer(self, buffer, instance) -> idx:
+    ret = self.buffers.len()
     self.buffers.push((buffer, instance))
-    return self.buffers.len()
+    return ret
 
   # Attempts to lookup a buffer at `idx` that `instance` should have access to,
   # and the buffer's type should be `ty`. If all of this is true then a buffer
   # is returned, otherwise if a check fails this raises a trap.
   def get_buffer(self, idx, instance, ty) -> Buffer:
-    idx = idx - 1
     assert_or_trap(idx >= 0 && idx < self.buffers.len())
     buffer, owner = buffers[idx]
     assert_or_trap(owner == instance)
