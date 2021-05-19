@@ -753,7 +753,8 @@ def lower_to_memory(direction, dst, ptr, gen):
       assert_eq(gen.next(), record_end<$fields>) # true by construction
     }
 
-    variant_start<$cases>(discrim) => {
+    variant_start<$cases>(label) => {
+    discrim = $cases.index(label)
       offset = 0
       match variant_discriminant($cases) {
         i8 => {
