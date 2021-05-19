@@ -339,7 +339,7 @@ def lift(direction, src, ty, values):
     variant<$cases> => {
       discrim = values.assert_next(i32)
       assert_or_trap(discrim >= 0 && discrim < $cases.len())
-      yield(variant_start<$cases>(discrim))
+      yield(variant_start<$cases>($cases[discrim].label))
       match $cases[discrim] {
         payload => {
           # Consume all other values that this variant might consume
@@ -566,7 +566,7 @@ def lift_from_memory(direction, src, ty, ptr):
             }
           }
           assert_or_trap(discrim >= 0 && discrim < $cases.len())
-          yield(variant_start<$cases>(discrim))
+          yield(variant_start<$cases>($cases[discrim].label))
 
           # Recursively read the payload, if present for this case. Note that
           # we align the pointer to the whole variant's alignment to ensure that
@@ -677,8 +677,9 @@ def lower(direction, dst, gen):
 
     # variants are represented with a discriminant plus whatever is the
     # smallest which fits all possible cases.
-    variant_start<$cases>(discrim) => {
-      result = [$cases.index($case) as wasm_i32]
+    variant_start<$cases>(label) => {
+      discrim = $cases.index(label)
+      result = [discrim as wasm_i32]
 
       # Recursively serialize the optional payload
       if $cases[discrim].has_payload:
