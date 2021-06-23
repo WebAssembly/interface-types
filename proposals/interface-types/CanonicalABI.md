@@ -107,7 +107,7 @@ the explainer.
   Buffers are intended to behave similarly to `handle` where they cannot
   be forged, but unlike `handle` they are only a temporary reference
   which lives for the duration of a function call (and can only show up as
-  paramters to functions). This enables efficient binding of APIs like `read`
+  parameters to functions). This enables efficient binding of APIs like `read`
   and `write` where the canonical ABI is simply passing a pointer/length.
 
 With this grammar of interface types, we can now define what it means to lift
@@ -177,8 +177,10 @@ def flatten(direction, interface_type):
     # un-forgeability is discussed later.
     handle => [i32]
 
-    # Buffers are represented as a pointer/length when passing to an import
-    # and as an integer handle when receiving as part of an export.
+    # Buffers are represented as three i32 values when passing to an import
+    # and as an integer handle when receiving as part of an export. For more
+    # information on its representation in imports see the comments in `lift`
+    # below.
     push-buffer | pull-buffer =>
       if direction == "import":
         [i32, i32, i32]
@@ -815,7 +817,7 @@ part of the canonical ABI:
   required. When an index is removed (because an instance said it no longer
   needs a resource, then that index is queued up as the next to be allocated).
 
-* There can be at most 2^31-1 values of any handle type for a module. This is
+* There can be 2^31-1 values of any handle type for a module. This is
   done so indices can fit into a hypothetical `i31ref` in the future.
 
 ```
@@ -1053,10 +1055,13 @@ pointer, the original size, the original alignment, and the new desired size. It
 returns an `i32` which is a pointer in memory which is valid for the new
 desired size of bytes. This function will trap if memory allocation failed and
 the first pointer argument can be 0 to indicate that this is effectively a
-fresh call for allocated bytes.
+fresh call for allocated bytes. Unlike C's realloc, zero-length allocations need
+not have unique addresses, so a zero-length allocation may be passed in and also
+requested, but it's ok to return anything that's non-zero to indicate success.
 
 The `canonical_abi_free` function takes a pointer/size/alignment and informs the
-allocator that the memory is no longer needed.
+allocator that the memory is no longer needed. Note that like `realloc` this may
+be called with a zero-size, in which case the function can likely exit early.
 
 ## Handle Intrinsics
 
@@ -1106,7 +1111,7 @@ def resource_new_$resource(src, val):
   handle = HANDLE(val=val, refcnt=0, src=src) # refcnt bumped to 1 in insert next
   return TABLES.insert($resource, handle, src)
 
-def resource_get_$resource(src, val):
+def resource_get_$resource(src, handle):
   return TABLES.get($resource, handle, src).val
 ```
 
@@ -1153,7 +1158,7 @@ buffer will be returned.
 The `canonical_abi::pull_buffer_len` is the same as the push variant, only it
 returns how many items can be pulled.
 
-The `canonical_abi::pull_buffer_push` is the same as the push version, except
+The `canonical_abi::pull_buffer_pull` is the same as the push version, except
 that it uses `write_to_memory` to write to the provided slice of bytes.
 
 All of these functions will call `TABLES.get_buffer` with the first argment as
