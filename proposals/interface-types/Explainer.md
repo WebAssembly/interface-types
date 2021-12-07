@@ -1214,7 +1214,7 @@ algorithm only operates on *adapter modules* and leaves core modules untouched.
       ;; core code
     )
   )
-  (instance $core_a (instantiate $CORE_A (instance $libc_a))
+  (instance $core_a (instantiate $CORE_A (instance $libc_a)))
   (module $GLUE
     (import "" (func $core_a_get_bytes (result i32 i32)))
     (import "libc_a" (instance $libc_a (type $Libc)))
