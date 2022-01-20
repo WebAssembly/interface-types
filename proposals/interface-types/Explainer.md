@@ -1503,10 +1503,10 @@ IDL APIs as built-in modules that can be directly imported.
 [Multi-value]: https://github.com/webassembly/multi-value
 [Multi-memory]: https://github.com/webassembly/multi-memory
 
-[Module Linking]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Explainer.md
-[Alias Definition]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Explainer.md#instance-imports-and-aliases
-[Shared-everything Dynamic Linking]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Explainer.md#shared-everything-dynamic-linking
-[Shared-everything-example]: https://github.com/WebAssembly/module-linking/blob/master/proposals/module-linking/Example-SharedEverythingDynamicLinking.md
+[Module Linking]: https://github.com/WebAssembly/module-linking/blob/main/design/proposals/module-linking/Explainer.md
+[Alias Definition]: https://github.com/WebAssembly/module-linking/blob/main/design/proposals/module-linking/Explainer.md#alias-definitions
+[Shared-everything Dynamic Linking]: https://github.com/WebAssembly/module-linking/blob/main/design/proposals/module-linking/Explainer.md#shared-everything-c-family-dynamic-linking
+[Shared-everything-example]: https://github.com/WebAssembly/module-linking/blob/main/design/proposals/module-linking/Example-SharedEverythingDynamicLinking.md
 
 [GC]: https://github.com/WebAssembly/gc/blob/master/proposals/gc/Overview.md
 
