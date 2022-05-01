@@ -1,5 +1,13 @@
 # Interface Types Proposal
 
+**Note: This proposal is currently inactive, with work having moved on to
+the [component-model](https://github.com/WebAssembly/component-model) repo. This
+proposal repo could become active again in the future to resume work on the
+[Adapter Functions](https://github.com/WebAssembly/component-model/blob/main/design/mvp/FutureFeatures.md#custom-abis-via-adapter-functions)
+future feature.**
+
+----
+
 The proposal adds a new set of **interface types** to WebAssembly that describe
 high-level values. The proposal is semantically layered on top of the
 WebAssembly [core spec] and can be implemented in terms of an unmodified core
